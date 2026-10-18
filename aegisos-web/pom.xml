@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.aegisos</groupId><artifactId>aegisos-parent</artifactId><version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>aegisos-web</artifactId>
+    <name>AegisOS Web</name>
+    <dependencies>
+        <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-core</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-provider</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-memory</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-tool</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-storage</artifactId><version>${project.version}</version></dependency>
+    </dependencies>
+</project>
