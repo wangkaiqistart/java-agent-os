@@ -1,0 +1,343 @@
+# CLI Reference
+
+The `oryxos` command provides sub-commands for workspace management, profile operations, interactive chat, and server control. All commands are implemented with Picocli and run on Java 21.
+
+```bash
+oryxos <command> [options]
+```
+
+**Global flags** (accepted by all commands):
+
+| Flag | Description |
+|------|-------------|
+| `--help`, `-h` | Show usage for the command |
+| `--version`, `-V` | Print version plus JVM/OS info |
+
+---
+
+## Workspace root
+
+By default OryxOS reads and writes the `.oryxos` workspace in the current directory. The root is configurable:
+
+| Mechanism | Applies to | Notes |
+|-----------|-----------|-------|
+| `ORYXOS_ROOT` (env var) | all commands | Light commands read it directly; `serve`/`gateway` pick it up through Spring relaxed binding |
+| `-Doryxos.root=<path>` (JVM system property) | all commands | Highest precedence for light commands |
+| `oryxos.root` in `application.yml` | `serve` / `gateway` only | Not read by the light commands (`init`/`status`/`profile`) — they never boot Spring, so use the env var or system property for them |
+
+Resolution order for the light commands is: `-Doryxos.root` → `ORYXOS_ROOT` → default `.oryxos`. The configured root is auto-added to the file sandbox whitelist at runtime, so relocating the workspace never breaks file tools.
+
+```bash
+# Point every command at a custom workspace
+ORYXOS_ROOT=/data/ws oryxos init
+ORYXOS_ROOT=/data/ws oryxos status
+```
+
+---
+
+## Getting started
+
+### init
+
+Initialize the workspace (default `.oryxos/`) in the current directory. Creates the directory structure and the default bootstrap files. Safe to run multiple times — existing files are never overwritten. This is a light command: it does not boot Spring, and it honors `ORYXOS_ROOT` / `-Doryxos.root`.
+
+```bash
+oryxos init
+# Or into a custom workspace root:
+ORYXOS_ROOT=/data/ws oryxos init
+```
+
+What gets created:
+
+```text
+.oryxos/
+├── agents/       # one sub-directory per agent (AGENT.md + optional skills/ scripts/ REFERENCE.md)
+├── memory/       # global long-term memory (per-agent MEMORY.md lives under agents/<name>/)
+├── sessions/     # reserved (session state lives in SQLite)
+├── logs/
+├── AGENTS.md     # bootstrap: project-level agent behavior
+├── SOUL.md       # bootstrap: agent persona
+└── USER.md       # bootstrap: user preferences (read-only)
+```
+
+The `oryxos.db` SQLite database is created on first run of a heavy command (`serve`/`gateway`/`chat`), not by `init`.
+
+### status
+
+Print the workspace and data-file state: whether the workspace is initialized, how many agents live under `agents/`, and whether the SQLite database exists. Like `init`, this is a light command — it does not boot Spring and honors `ORYXOS_ROOT` / `-Doryxos.root`.
+
+```bash
+oryxos status
+```
+
+```text
+Workspace .oryxos/  : initialized
+Agent directory     : 3
+SQLite database     : oryxos.db present
+```
+
+---
+
+## Chat
+
+### chat
+
+Start an interactive multi-turn conversation with an agent. Runs a ReAct Loop on each message and prints the final response to the terminal. Type `/quit` or press `Ctrl-D` to end the session.
+
+```bash
+oryxos chat [--profile <name>]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--profile <name>` | `default` | Profile to use for this session |
+
+Example:
+
+```bash
+oryxos chat --profile ops-agent
+```
+
+```text
+[ops-agent] > check disk usage
+[tool: shell] df -h
+/dev/sda1  200G  84G  116G  42%  /
+Disk usage on /dev/sda1 is 42% (84G of 200G used). You have 116G free.
+
+[ops-agent] > /quit
+Session archived. Goodbye.
+```
+
+The session is persisted to SQLite and restored on subsequent `chat` invocations with the same profile and user context.
+
+---
+
+## Server
+
+### serve
+
+Start the HTTP API server. It exposes the REST API under `/api/v1` and serves the web admin console at `/admin/`. Runs synchronously with Java 21 virtual threads — no separate thread pool tuning required. As a heavy command, `serve` boots Spring and reads its workspace root from `oryxos.root` in `application.yml` (Spring relaxed binding also honors the `ORYXOS_ROOT` env var).
+
+```bash
+oryxos serve [--port <port>]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--port <port>` | `8080` | TCP port to bind |
+
+```bash
+oryxos serve --port 9090
+```
+
+```text
+OryxOS API server starting...
+Listening on http://0.0.0.0:9090
+Admin console: http://0.0.0.0:9090/admin/
+```
+
+Press `Ctrl-C` to stop.
+
+### gateway
+
+Start OryxOS in daemon mode (full runtime, resident). Intended for production multi-agent deployments; multi-channel mounting is an extension-phase feature. Like `serve`, it boots Spring and reads its workspace root from `oryxos.root` (env `ORYXOS_ROOT` honored via relaxed binding). Press `Ctrl-C` to stop.
+
+```bash
+oryxos gateway
+```
+
+---
+
+## Agent (profile) management
+
+Each agent is one directory under `<workspace>/agents/<name>/`, holding an `AGENT.md` (YAML frontmatter = the agent's profile: identity, provider, tools, settings; body = task instructions) plus optional `skills/`, `scripts/`, and `REFERENCE.md`. One directory = one agent — there is no `.oryxos/profiles/` directory. The `profile` sub-commands are light (no Spring) and read/write these `AGENT.md` files directly, honoring `ORYXOS_ROOT` / `-Doryxos.root`.
+
+### profile list
+
+List all agents found under `<workspace>/agents/` (one line per agent directory).
+
+```bash
+oryxos profile list
+```
+
+```text
+default
+ops-agent
+reviewer
+```
+
+### profile create
+
+Scaffold a new agent directory with a minimal `AGENT.md` template. Existing agents are not overwritten.
+
+```bash
+oryxos profile create <name>
+```
+
+```bash
+oryxos profile create code-reviewer
+# Created .oryxos/agents/code-reviewer/AGENT.md
+```
+
+### profile show
+
+Print the full contents of an agent's `AGENT.md`.
+
+```bash
+oryxos profile show <name>
+```
+
+```bash
+oryxos profile show ops-agent
+```
+
+### profile delete
+
+Remove an agent's entire directory from the workspace.
+
+```bash
+oryxos profile delete <name>
+```
+
+---
+
+## Inspection
+
+### provider list
+
+List the provider registry this instance actually runs with. The light CLI command queries the same database as the runtime — the `providers` table in `oryxos.db` by default, or the datasource configured in `config/application.yml` — and prints each provider's name, derived default marker, base URL and description. The packaged `application.yml` only seeds providers missing from the database on first startup; after that the database is the single source of truth. Providers added or deleted in the admin console (`/api/v1/providers`) show up here accordingly.
+
+```bash
+oryxos provider list
+```
+
+```text
+Provider 注册表（oryxos.db）：
+NAME                 DEFAULT  BASE-URL                                             DESCRIPTION
+deepseek             *        https://api.deepseek.com                             默认 DeepSeek
+mock                          -                                                    内置假模型
+qwen                          https://dashscope.aliyuncs.com/compatible-mode/v1    通义
+default(*) 为运行时派生（注册表内按大小写无关排序的最小名），不是库字段。
+```
+
+The command exits non-zero when the database is unreachable, uninitialized, or missing the `providers` table; it never falls back to the packaged YAML.
+
+### tool list
+
+List the built-in tools. Once the `ToolRegistry` is wired at runtime this reflects the live registry (built-in plus MCP tools).
+
+```bash
+oryxos tool list
+```
+
+```text
+Built-in tools:
+  read_file
+  write_file
+  list_dir
+  shell
+  http_get
+  http_post
+  save_memory
+  recall_memory
+  notify
+```
+
+### session list
+
+List sessions stored in the SQLite database (`oryxos.db` in the current directory), newest first. Columns: session id, profile name, status, last active time.
+
+```bash
+oryxos session list
+```
+
+```text
+cli:user-001:ops-agent                   ops-agent        active    2025-06-01 10:05
+cli:user-002:default                      default          active    2025-06-01 09:30
+```
+
+---
+
+## User management
+
+Manage admin accounts for the management console (`/admin/**`) Basic Auth. Accounts are stored in the `web_users` SQLite table; passwords are BCrypt-hashed and never stored in plaintext. Changes take effect immediately — no server restart is required for new accounts to work.
+
+> Basic Auth is opt-in. It is disabled by default (`oryxos.web.auth.enabled=false`, assuming a trusted internal network). Enable it in `config/application.yml`, then create at least one account before starting `serve` — otherwise startup is blocked with a clear error.
+
+### user add
+
+Create an account. Prompts for a password twice (input is not echoed); the password must be at least 8 characters and the two entries must match.
+
+```bash
+oryxos user add <username>
+```
+
+```bash
+oryxos user add admin
+# Password (>= 8 chars): ********
+# Confirm: ********
+# Created user 'admin'
+```
+
+### user list
+
+List all accounts. **Never prints passwords or hashes.**
+
+```bash
+oryxos user list
+```
+
+```text
+USERNAME                 ENABLED  ROLE             CREATED_AT
+admin                    true     VIEWER           2026-07-22T10:30:00Z
+alice                    true     EDITOR           2026-07-22T11:00:00Z
+```
+
+The `ROLE` column (039 authorization) is the account's current role; an account holding several roles shows them comma-separated, and an empty role field shows `-`.
+
+### user role
+
+Set an account's role (039 authorization): `VIEWER` (read-only) / `EDITOR` (do work and manage assets) / `ADMIN` (manage members, channels, policies, workspace settings). They nest, and the value is case-insensitive. The command **replaces** the role — one role per invocation, never appended; an invalid role name fails with a clear error.
+
+```bash
+oryxos user role <username> <VIEWER|EDITOR|ADMIN>
+```
+
+```bash
+oryxos user role admin ADMIN
+# Role of 'admin' set to ADMIN
+```
+
+New accounts default to `VIEWER`, so doing real work requires an explicit promotion. Roles are re-resolved from the database on every request with no caching, so a change or revocation takes effect on the **very next request**. For how to turn authorization on, what each tier may do, and the permission ceiling on API keys, see the "Authorization (RBAC)" section of [Authentication](./auth.md).
+
+### user passwd
+
+Change an account's password. Prompts for the new password twice (not echoed).
+
+```bash
+oryxos user passwd <username>
+```
+
+### user disable
+
+Disable an account without deleting it. A disabled account cannot log in (Basic Auth returns 401).
+
+```bash
+oryxos user disable <username>
+```
+
+### user enable
+
+Re-enable a previously disabled account (symmetric to `disable`).
+
+```bash
+oryxos user enable <username>
+```
+
+### user delete
+
+Delete an account permanently.
+
+```bash
+oryxos user delete <username>
+```
