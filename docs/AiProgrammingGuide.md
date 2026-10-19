@@ -1,8 +1,8 @@
-# OryxOS AI 编程指南
+# AegisOS AI 编程指南
 
-> 本文档定义 OryxOS 的 AI 编程实施思路。主体思路是用 **Spec-Kit** 完成主体开发，把已有的需求文档和技术方案喂给 Spec-Kit，按五大核心能力拆成 5 个 user story 逐步实施；后续增量阶段切换到手动提示词配合 Claude Code。前置阅读《项目篇 OryxOS 业界调研》《OryxOS 需求文档》《OryxOS 技术方案》。本文档讲思路和拆解方法，不绑定具体时间安排，也不展开提示词细节。
+> 本文档定义 AegisOS 的 AI 编程实施思路。主体思路是用 **Spec-Kit** 完成主体开发，把已有的需求文档和技术方案喂给 Spec-Kit，按五大核心能力拆成 5 个 user story 逐步实施；后续增量阶段切换到手动提示词配合 Claude Code。前置阅读《项目篇 AegisOS 业界调研》《AegisOS 需求文档》《AegisOS 技术方案》。本文档讲思路和拆解方法，不绑定具体时间安排，也不展开提示词细节。
 
-> 本文档以最新技术方案为准：核心阶段交付的是 Agent OS 的运行时内核，Maven 模块为 9 个（技术方案第 10 章），五大核心能力（对接 LLM、ReAct、Memory、Tool、Web Service）作为 5 个 user story 的骨架。
+> 本文档以最新技术方案为准：核心阶段交付的是 Agent OS 的运行时内核，Maven 模块为 14 个（技术方案第 10 章），五大核心能力（对接 LLM、ReAct、Memory、Tool、Web Service）作为 5 个 user story 的骨架。
 
 ---
 
@@ -10,14 +10,14 @@
 
 ### 1.1 主体思路：Spec-Kit + 手动提示词的混合模式
 
-OryxOS 的 AI 编程实施分两个阶段，两个阶段用不同的协作工具：
+AegisOS 的 AI 编程实施分两个阶段，两个阶段用不同的协作工具：
 
 | 阶段 | 工具 | 适用场景 |
 |------|------|---------|
-| **主体开发阶段** | Spec-Kit | 从零开发 OryxOS 1.0 的五大核心能力，9 个 Maven 模块 |
+| **主体开发阶段** | Spec-Kit | 从零开发 AegisOS 1.0 的五大核心能力，14 个 Maven 模块 |
 | **增量开发阶段** | 手动提示词 + Claude Code | 扩展功能、修 bug、加 Plugin Tool 等小颗粒度增量 |
 
-这两个阶段的边界很清晰：**Spec-Kit 适合大颗粒度 greenfield，手动提示词适合小颗粒度增量**。OryxOS 主体开发是前者，社区接力是后者，工具选择跟工作性质匹配。
+这两个阶段的边界很清晰：**Spec-Kit 适合大颗粒度 greenfield，手动提示词适合小颗粒度增量**。AegisOS 主体开发是前者，社区接力是后者，工具选择跟工作性质匹配。
 
 ---
 
@@ -30,25 +30,23 @@ OryxOS 的 AI 编程实施分两个阶段，两个阶段用不同的协作工具
 | `/speckit.specify` 输入 | 需求文档 | Spec-Kit 把需求文档转成 5 个 user story 的 spec |
 | `/speckit.plan` 输入 | 技术方案 | Spec-Kit 把技术方案转成模块化的实施 plan |
 | `constitution.md` | 需求文档第 3 章设计目标 + 技术方案第 1.1 节关键技术决策 | 非协商原则 |
-| acceptance criteria | 需求文档第 13 章 5 个验收 Demo | 直接复用 |
+| acceptance criteria | 需求文档第 13 章 3 个端到端 Demo；Web Service 独立功能验收 | 直接复用 |
 
 已有文档的投入不浪费，Spec-Kit 只是把它们转换成 AI agent 能直接消费的格式。
 
-> **关键注意**：技术方案是 `/speckit.plan` 的输入，所以 plan 里的模块结构必须跟技术方案第 10 章的 9 个模块一致，喂文档时确保用的是最新版技术方案，否则生成的 plan 会按错误的模块数拆分。
+> **关键注意**：技术方案是 `/speckit.plan` 的输入，所以 plan 里的模块结构必须跟技术方案第 10 章的 14 个模块一致，喂文档时确保用的是最新版技术方案，否则生成的 plan 会按错误的模块数拆分。
 
 ---
 
 ### 1.3 拆解策略：按 user story 拆，不按时间拆
 
-整个 OryxOS 主体开发按 **5 个 user story** 组织，每个对应一个核心能力。
+整个 AegisOS 主体开发按 **5 个 user story** 组织，每个对应一个核心能力。
 
 5 个 user story 不是平行的，它们之间有明确的依赖关系，依赖关系决定推进顺序：
 
 | User Story | 核心能力 | 依赖 | 可并行 |
 |-----------|---------|------|--------|
-| **US-1** | 对接 LLM（Provider 抽象） | 无 | — |
-| **US-2** | ReAct 循环（Agent 大脑） | US-1 | — |
-| **US-3** | Memory 三层记忆 | US-2 | 与 US-4 并行 |
+ 
 | **US-4** | Plugin Tool 体系 | US-2 | 与 US-3 并行 |
 | **US-5** | Web Service | US-1 ~ US-4 全部 | — |
 
@@ -65,9 +63,9 @@ OryxOS 的 AI 编程实施分两个阶段，两个阶段用不同的协作工具
 
 ---
 
-## 2. Spec-Kit 跟 OryxOS 的匹配度评估
+## 2. Spec-Kit 跟 AegisOS 的匹配度评估
 
-写实施计划之前先回答一个根本问题：Spec-Kit 真的适合 OryxOS 项目吗？
+写实施计划之前先回答一个根本问题：Spec-Kit 真的适合 AegisOS 项目吗？
 
 ### 2.1 Spec-Kit 适合什么场景
 
@@ -84,27 +82,27 @@ Spec-Kit 是 GitHub 开源的 spec-driven development 工具链，是 2026 年�
 - 大型 brownfield 项目改造（legacy 代码上下文太复杂，超出 LLM context limit）
 - 探索性研究项目（需求未定就跑 spec 会反复返工）
 
-### 2.2 OryxOS 的匹配度判断
+### 2.2 AegisOS 的匹配度判断
 
-对照 Spec-Kit 适合的场景逐条评估 OryxOS：
+对照 Spec-Kit 适合的场景逐条评估 AegisOS：
 
-| 评估维度 | OryxOS 情况 | 匹配度 |
+| 评估维度 | AegisOS 情况 | 匹配度 |
 |---------|------------|--------|
 | greenfield | 从零开发的全新项目，不是改造现有代码 | ✅ 完全匹配 |
-| 规模 | 9 个 Maven 模块、五大核心能力清晰，典型 medium 规模 | ✅ 完全匹配 |
+| 规模 | 14 个 Maven 模块、五大核心能力清晰，典型 medium 规模 | ✅ 完全匹配 |
 | 需求清晰 | 已有完整的需求文档 + 技术方案，五大核心能力都有 user story 级别描述 | ✅ 完全匹配 |
-| AI agent 协作 | OryxOS 本来就是用 Claude Code 做主体开发 | ✅ 完全匹配 |
+| AI agent 协作 | AegisOS 本来就是用 Claude Code 做主体开发 | ✅ 完全匹配 |
 | 方法论场景 | Spec-Kit 的强制流程让产出对齐需求，对开发者掌握工程方法论很有价值 | ✅ 匹配 |
 
-**结论**：Spec-Kit 是 OryxOS 主体开发的最佳工具选择。社区在 brownfield 项目上对 Spec-Kit 有争议，但 OryxOS 是纯 greenfield，这些争议不适用。
+**结论**：Spec-Kit 是 AegisOS 主体开发的最佳工具选择。社区在 brownfield 项目上对 Spec-Kit 有争议，但 AegisOS 是纯 greenfield，这些争议不适用。
 
 ### 2.3 Spec-Kit 的局限和应对
 
-| 局限 | 描述 | OryxOS 的应对 |
+| 局限 | 描述 | AegisOS 的应对 |
 |------|------|-------------|
-| 流程对小增量过重 | Spec-Kit 完整流程对小改动开销过大 | OryxOS 主体开发是大颗粒度，增量阶段切换到手动提示词 |
+| 流程对小增量过重 | Spec-Kit 完整流程对小改动开销过大 | AegisOS 主体开发是大颗粒度，增量阶段切换到手动提示词 |
 | spec 不会自动跟实现同步 | AI agent 在 implement 阶段可能偏离 spec | 每个 user story 实施完成后跑 `/speckit.analyze` 做一致性检查 |
-| context limit 在大型 brownfield 上失效 | 十万级文件的 legacy 项目 LLM 看不全 | OryxOS 是纯 greenfield，整个项目在 LLM context window 内，不适用 |
+| context limit 在大型 brownfield 上失效 | 十万级文件的 legacy 项目 LLM 看不全 | AegisOS 是纯 greenfield，整个项目在 LLM context window 内，不适用 |
 | Spec-Kit 本身在快速迭代 | 命令名、artifacts 格式、集成方式都还在变 | 本文档不锁定具体版本细节，具体命令以实施时官方文档为准 |
 
 ---
@@ -115,24 +113,24 @@ Spec-Kit 是 GitHub 开源的 spec-driven development 工具链，是 2026 年�
 
 ### 3.1 Spec-Kit 安装 + Claude Code 配置
 
-Specify CLI 是 Spec-Kit 的入口工具（Python 实现，需要 Python 3.11+，推荐用 `uv` 安装）。安装后通过 `specify init` 初始化 OryxOS 项目的 Spec-Kit 工作区，工作区里有 `.specify/memory/constitution.md` 以及 spec、plan、tasks 等 artifacts 的目录结构。
+Specify CLI 是 Spec-Kit 的入口工具（Python 实现，需要 Python 3.11+，推荐用 `uv` 安装）。安装后通过 `specify init` 初始化 AegisOS 项目的 Spec-Kit 工作区，工作区里有 `.specify/memory/constitution.md` 以及 spec、plan、tasks 等 artifacts 的目录结构。
 
 Claude Code 是主推的 AI agent，Spec-Kit 官方支持 Claude Code。具体集成方式（早期是 slash 命令，现在 Claude Code 走 skills 模式，初始化时通过参数指定）以官方文档为准。
 
 ---
 
-### 3.2 `/speckit.constitution`：写 OryxOS 项目宪章
+### 3.2 `/speckit.constitution`：写 AegisOS 项目宪章
 
-`constitution.md` 是项目的 **non-negotiable principles**，所有后续 spec、plan、tasks、implement 都要遵守。OryxOS 的 constitution 从需求文档第 3 章设计目标 + 技术方案第 1.1 节关键技术决策提炼：
+`constitution.md` 是项目的 **non-negotiable principles**，所有后续 spec、plan、tasks、implement 都要遵守。AegisOS 的 constitution 从需求文档第 3 章设计目标 + 技术方案第 1.1 节关键技术决策提炼：
 
 | # | 原则 | 说明 |
 |---|------|------|
-| 1 | JDK 21 + Spring Boot 3.x 单体应用 | Maven 多模块（9 个），单二进制部署 |
+| 1 | JDK 21 + Spring Boot 3.x 单体应用 | Maven 多模块（14 个），单二进制部署 |
 | 2 | 五大核心能力优先 | 核心阶段交付运行时内核，企业级治理层放扩展阶段 |
 | 3 | 自实现 ReAct loop | 不直接用 Spring AI 的 Agent 抽象 |
 | 4 | **Spring AI 只用一半** | 只用 Provider 抽象、协议转换、@Tool schema 生成；**禁用自动 tool 执行**；tool 调度完全由 `ReActLoop` + `ToolExecutor` 控制。**最容易被写错的一条** |
 | 5 | Plugin Tool 三档接入 | 主推 SKILL.md + MCP 零代码方式 |
-| 6 | SQLite + MEMORY.md 文件存储 | 向量检索放扩展阶段；`tool_invocations` 和 `llm_calls` **核心阶段就写入落库** |
+| 6 | SQLite + 可插拔长期记忆后端 | 默认 `MarkdownMemoryStore` 使用 `MEMORY.md`，并支持 `SqliteMemoryStore` / `Mem0MemoryStore`；`tool_invocations` 和 `llm_calls` **核心阶段就写入落库** |
 | 7 | 每个 user story 完成后有可演示 Demo | 优先级是跑通而非完美 |
 
 > `constitution.md` 写一次定下来，整个主体开发期间不改。如果中途发现某条原则不对，停下来重新讨论，**不允许 AI agent 自己修改 constitution**。
@@ -143,18 +141,18 @@ Claude Code 是主推的 AI agent，Spec-Kit 官方支持 Claude Code。具体�
 
 `/speckit.specify` 命令的输入是需求文档，输出是 5 个 user story 的 spec，每个 user story 对应一个核心能力。
 
-5 个 user story 按依赖关系排推进顺序，而不是按重要性。这里要特别说明：US-5 Web Service 排在最后实施，是因为它依赖前四个能力都就绪，**不是因为它不重要**。恰恰相反，Web Service 是 OryxOS 区别于个人助手项目的关键能力，重要性很高。本文档不用 P1/P2/P3 这种优先级标记，避免被误读成"靠后的可以不做"，只讲依赖顺序。
+5 个 user story 按依赖关系排推进顺序，而不是按重要性。这里要特别说明：US-5 Web Service 排在最后实施，是因为它依赖前四个能力都就绪，**不是因为它不重要**。恰恰相反，Web Service 是 AegisOS 区别于个人助手项目的关键能力，重要性很高。本文档不用 P1/P2/P3 这种优先级标记，避免被误读成"靠后的可以不做"，只讲依赖顺序。
 
-每个 user story 的 acceptance criteria 直接复用需求文档第 13 章 5 个验收 Demo：
+每个 user story 的 acceptance criteria 直接复用需求文档第 13 章的 3 个端到端 Demo；Web Service 作为独立功能验收：
 
 | User Story | 对应 Demo | 场景 |
 |-----------|---------|------|
-| US-1 + US-2 | Demo 一 | 查天气穿衣 |
-| US-3 | Demo 二 | 跨对话记偏好 |
-| US-4 | Demo 三 | 零代码 PR digest |
-| US-5 | Demo 四 + Demo 五 | Web Service 同步调用 + 多端点联动 |
+| US-1 + US-2 | Demo 一 | 每日天气 |
+| US-3 + US-4 | Demo 二 | 每日科技日报（Memory + Skill/MCP） |
+| US-4 | Demo 三 | 每日 GitHub 日报（脚本/MCP） |
+| US-5 | 独立功能验收 | Web Service 同步调用与多端点联动 |
 
-`/speckit.specify` 执行后生成 `spec.md`，AI agent 据此理解 OryxOS 整体要做什么。跑完后建议跑一次 `/speckit.clarify`，AI agent 会问几个澄清问题（比如 max iterations 默认值、对话历史截断策略等），这一步可选但推荐。
+`/speckit.specify` 执行后生成 `spec.md`，AI agent 据此理解 AegisOS 整体要做什么。跑完后建议跑一次 `/speckit.clarify`，AI agent 会问几个澄清问题（比如 max iterations 默认值、对话历史截断策略等），这一步可选但推荐。
 
 ---
 
@@ -163,14 +161,14 @@ Claude Code 是主推的 AI agent，Spec-Kit 官方支持 Claude Code。具体�
 `/speckit.plan` 命令的输入是技术方案 + 上一步的 `spec.md` + `constitution.md`，输出是实施 plan。Plan 包含：
 
 - 技术栈选型（JDK 21 + Spring Boot 3.x + Spring AI Alibaba + SQLite + Picocli）
-- 9 个 Maven 模块的职责（对照技术方案第 10 章）
+- 14 个 Maven 模块的职责（对照技术方案第 10 章）
 - 关键技术决策的展开（自实现 ReAct、Spring AI 只用一半的边界、Plugin Tool 三档、SQLite + MEMORY.md、审计 day one 落库）
 - 数据流和模块间协作（`PromptBuilder` + `ProviderService` + `ToolExecutor` + `MemoryService` 三层门面）
 
 **Plan 生成后人工 review 是必要环节**。AI agent 可能根据自己对技术方案的理解做了不该做的取舍，重点检查：
 
 - [ ] 有没有把 Memory 简化成跟 Session 合并（应该是 `MemoryService` 三层统一门面）
-- [ ] 有没有把 Tool 又拆成多个模块（应该是合并的 `oryxos-tool` 一个模块）
+- [ ] 有没有把 Tool 又拆成多个模块（应该是合并的 `aegisos-tool` 一个模块）
 - [ ] 有没有把 `AgentLoader`/`AGENT.md` 当成 Tool（Agent 目录应该归 core 的 `ContextLoader`，正文注入 prompt）
 - [ ] 有没有启用 Spring AI 的自动 tool 执行（必须禁用）
 
@@ -180,14 +178,14 @@ Review 通过后 `plan.md` 锁定。
 
 ### 3.5 准备阶段交付物清单
 
-准备阶段结束时，OryxOS 项目仓库里应该有：
+准备阶段结束时，AegisOS 项目仓库里应该有：
 
 ```
 .specify/
 └── memory/
     └── constitution.md       # 非协商原则集
 spec.md                       # 5 个 user story
-plan.md                       # 技术栈 + 9 个模块 + 技术决策
+plan.md                       # 技术栈 + 14 个模块 + 技术决策
 docs/
 ├── DemandAnalysis.md         # 需求文档（来源参考）
 ├── TechnicalSolution.md      # 技术方案（来源参考）
@@ -201,25 +199,25 @@ docs/
 
 ## 4. 基于 Spec-Kit 的实施拆解
 
-准备阶段把整体 spec 和 plan 都准备好了，下面按 5 个 user story 拆解具体实施。每个 user story 的拆解结构一致：核心目标、涉及的 Maven 模块、Spec-Kit 任务拆分思路、关键 task 颗粒度、验收 Demo。模块名以技术方案第 10 章的 9 模块为准。
+准备阶段把整体 spec 和 plan 都准备好了，下面按 5 个 user story 拆解具体实施。每个 user story 的拆解结构一致：核心目标、涉及的 Maven 模块、Spec-Kit 任务拆分思路、关键 task 颗粒度、验收 Demo。模块名以技术方案第 10 章的 14 个模块为准；Web Service 章节的验证项不再编号为 Demo。
 
 ---
 
 ### 4.1 US-1：对接 LLM（核心能力一）
 
-**核心目标**：让 OryxOS 能调任意主流 LLM，Agent 不感知具体调的是哪家。LLM 调用的复杂度都被 Spring AI Alibaba 吸收，OryxOS 只在它之上做一层薄包装。
+**核心目标**：让 AegisOS 能调任意主流 LLM，Agent 不感知具体调的是哪家。LLM 调用的复杂度都被 Spring AI Alibaba 吸收，AegisOS 只在它之上做一层薄包装。
 
 **涉及的 Maven 模块**：
-- `oryxos-core`（`OryxTool` 接口、`Session`、`Profile`、`ContextLoader` 等核心抽象）
-- `oryxos-provider`（核心能力一）
-- `oryxos-boot`（Spring Boot 启动模块）
+- `aegisos-core`（`AegisTool` 接口、`Session`、`Profile`、`ContextLoader` 等核心抽象）
+- `aegisos-provider`（核心能力一）
+- `aegisos-boot`（Spring Boot 启动模块）
 
 **Spec-Kit 任务拆分思路**：`/speckit.tasks` 针对 US-1 拆任务，按依赖关系排序，标记可并行任务。预期产出的 task 大类：
 
 | Task 类别 | 主要内容 |
 |----------|---------|
-| 环境搭建类 | Maven 多模块骨架 9 个模块、Spring Boot 启动配置、Spring AI Alibaba 依赖 |
-| 核心抽象类 | `OryxTool` 接口、`Profile` 数据结构、`Message` 数据结构 |
+| 环境搭建类 | Maven 多模块骨架 14 个模块、Spring Boot 启动配置、Spring AI Alibaba 依赖 |
+| 核心抽象类 | `AegisTool` 接口、`Profile` 数据结构、`Message` 数据结构 |
 | Provider 实现类 | `ProviderService` 实现、provider name 到 `ChatModel` 的显式映射、Function Calling 适配 |
 | 配置类 | `application.yaml` 配置至少跑通 DeepSeek 或 Kimi，配合 `ConfigLoader` 从环境变量加载 API key |
 
@@ -231,22 +229,22 @@ US-1 实施完成后不立刻有 demo，因为它没有用户可见的入口，�
 
 ### 4.2 US-2：ReAct 循环（核心能力二）
 
-**核心目标**：实现 Agent 的核心工作机制。即：LLM 思考是否调用工具，调用之后看结果，再决定下一步，直到给出最终响应。ReAct 循环是 OryxOS 最关键的一段代码。
+**核心目标**：实现 Agent 的核心工作机制。即：LLM 思考是否调用工具，调用之后看结果，再决定下一步，直到给出最终响应。ReAct 循环是 AegisOS 最关键的一段代码。
 
 **涉及的 Maven 模块**：
-- `oryxos-core`（`ReActLoop`、`PromptBuilder`、`ToolExecutor`、`ContextLoader`）
-- `oryxos-tool`（一个 HTTP Tool + `SandboxChecker` 简化版，Demo 一需要）
-- `oryxos-channel-cli`（CLI Channel，Demo 一需要）
-- `oryxos-cli`（`oryxos init` + `oryxos chat` 命令）
+- `aegisos-core`（`ReActLoop`、`PromptBuilder`、`ToolExecutor`、`ContextLoader`）
+- `aegisos-tool`（一个 HTTP Tool + `SandboxChecker` 简化版，Demo 一需要）
+- `aegisos-channel-cli`（CLI Channel，Demo 一需要）
+- `aegisos-cli`（`aegisos init` + `aegisos chat` 命令）
 
-> 注意这里 Tool 相关只有一个 `oryxos-tool` 模块（技术方案已把 builtin/skill/mcp 合并），不再是旧版的多个 tool 模块。
+> 注意这里 Tool 相关只有一个 `aegisos-tool` 模块（技术方案已把 builtin/skill/mcp 合并），不再是旧版的多个 tool 模块。
 
 **Spec-Kit 任务拆分思路**：预期产出的 task 大类：
 
 | Task 类别 | 主要内容 |
 |----------|---------|
 | ReAct 循环类 | `ReActLoop` 主循环、`PromptBuilder`、`ToolExecutor`、`MAX_ITERATIONS` 控制 |
-| CLI Channel 类 | `CliChannel`、`oryxos chat` 命令、`oryxos init` 工作区初始化 |
+| CLI Channel 类 | `CliChannel`、`aegisos chat` 命令、`aegisos init` 工作区初始化 |
 | 基础 Tool 类 | HTTP Tool、`SandboxChecker` 简化版（只校验 URL 白名单） |
 | Profile YAML 解析类 | SnakeYAML、Profile 校验 |
 | Session 类 | `Session` 数据结构、`SessionManager` 内存版（持久化放 US-5） |
@@ -259,40 +257,40 @@ US-1 实施完成后不立刻有 demo，因为它没有用户可见的入口，�
 
 US-1 + US-2 完成后跑 `/speckit.analyze` 检查 spec 跟代码一致性。
 
-**验收 Demo 一**：查天气穿衣
+**验收 Demo 一**：每日天气
 
-`oryxos chat` 启动 CLI，用户输入"查一下北京天气并告诉我穿什么"，Agent 通过 ReAct 循环调用 HTTP Tool 拉天气 JSON，根据数据回复穿衣建议，完整对话日志正确累积到 Session，至少跑通一个 Provider（DeepSeek 或 Kimi）。
+`AgentScheduler` 每天到点触发天气 Agent，Agent 通过 ReAct 循环调用 `http_get` 获取天气，再调用 `notify` 推送穿衣建议；完整对话日志和两次 Tool 调用正确累积到 Session，手动通过 `aegisos chat` 补跑时复用同一条链路。
 
 ---
 
 ### 4.3 US-3：Memory 三层记忆（核心能力三）
 
-**核心目标**：让 Agent 跨对话保留状态。核心阶段做极简版的两层（会话和长期），用一份 `MEMORY.md` 文件加两个内置 Tool 实现，让 Agent 主动写入和读取。
+**核心目标**：让 Agent 跨对话保留状态。核心阶段实现会话记忆，并通过可插拔的长期记忆后端（默认 `MarkdownMemoryStore`，也支持 SQLite 和 Mem0）加两个内置 Tool 让 Agent 主动写入和读取。
 
 **涉及的 Maven 模块**：
-- `oryxos-memory`（核心能力三，含 `MemoryService` 三层门面、`LongTermMemory`、`MemoryTools`）
+- `aegisos-memory`（核心能力三，含 `MemoryService` 三层门面、`LongTermMemory`、`MemoryTools`）
 
 **Spec-Kit 任务拆分思路**：US-3 相对独立，依赖 US-2 但不影响 US-4。预期产出的 task 大类：
 
 | Task 类别 | 主要内容 |
 |----------|---------|
 | `MemoryService` 门面类 | 三层统一门面，内部把会话记忆委托给 `SessionManager`、长期记忆委托给 `LongTermMemory` |
-| `LongTermMemory` 类 | `append`、`load`、`recallByKeyword`、`truncateIfNeeded` 四个方法，接口预留 `recall(mode)` 向量检索升级空间 |
+| `LongTermMemoryStore` 接口与实现 | `append`、`load`、`recallByKeyword`、`capabilities`；核心阶段交付 Markdown（默认）、SQLite、Mem0 三档后端 |
 | `MemoryTools` 类 | `save_memory` + `recall_memory` 两个内置 Tool，用 `@Tool` 注解 |
 | `PromptBuilder` 集成类 | 在 `PromptBuilder` 里通过 `MemoryService` 注入记忆，确保不破坏 US-2 跑通的 ReAct 循环 |
-| `MEMORY.md` 文件管理类 | 文件位置、格式约定、超长截断策略 |
+| 长期记忆配置类 | `memory.backend` 选择后端；默认文件位置、格式约定、归档区截断策略 |
 
 US-3 实施完成后跑 `/speckit.analyze`。
 
-**验收 Demo 二**：跨对话记偏好
+**验收 Demo 二**：每日科技日报
 
-第一次对话告诉 Agent"我项目用 Spring Boot，部署在 K8s 上"，Agent 主动调 `save_memory` 追加到 `MEMORY.md`；重启 OryxOS 或新开会话；第二次对话问"帮我看看我的项目能用什么数据库"，Agent 在响应里引用之前记的偏好给出建议。
+业务方只创建一个带 `schedules` 的 `AGENT.md`，在 Agent 的 `skills/` 绑定公共组稿 Skill，并配置新闻 MCP。Agent 通过 `save_memory` 保留用户关注方向，到点注入记忆和 Skill 元数据，按需读取 Skill 正文、汇总科技新闻并调用 `notify` 推送；全程不写 Java 代码。
 
 ---
 
 ### 4.4 US-4：Plugin Tool 体系（核心能力四）
 
-**核心目标**：让业务方扩展 OryxOS 的能力。Plugin Tool 三档接入：
+**核心目标**：让业务方扩展 AegisOS 的能力。Plugin Tool 三档接入：
 1. 零代码 SKILL.md + MCP（主推）
 2. 轻代码自写 MCP server
 3. 重代码 Java `@Tool` 注解
@@ -300,16 +298,16 @@ US-3 实施完成后跑 `/speckit.analyze`。
 核心阶段做完三档基础设施 + 内置 Tool 补齐。
 
 **涉及的 Maven 模块**：
-- `oryxos-tool`（补齐文件 Tool + Shell Tool、MCP Client、`SandboxChecker` 完整版、`ToolRegistry`，三合一模块）
-- `oryxos-core`（SKILL.md 的加载归 `ContextLoader`，不在 tool 模块）
+- `aegisos-tool`（补齐文件 Tool + Shell Tool、MCP Client、`SandboxChecker` 完整版、`ToolRegistry`，三合一模块）
+- `aegisos-core`（SKILL.md 的加载归 `ContextLoader`，不在 tool 模块）
 
 **Spec-Kit 任务拆分思路**：US-4 跟 US-3 可以并行（都依赖 US-2 但互不依赖）。预期产出的 task 大类：
 
 | Task 类别 | 主要内容 |
 |----------|---------|
-| 内置 Tool 补齐类 | `read_file`、`write_file`、`list_dir`，Shell Tool 带白名单，`SandboxChecker` 完整实现 |
-| MCP Client 类 | `mcp_servers.yaml` 解析、`McpClientService` 启动时连接、`tools/list` 拉工具、`McpToolAdapter` 包装成 `OryxTool` |
-| `AGENT.md` 类 | `ContextLoader` 加载 `.oryxos/agents/` 下每个 Agent 的 `AGENT.md` 正文拼接到 system prompt，这部分归 core 不归 tool |
+| 内置 Tool 补齐类 | 补齐 9 个内置 Tool：`read_file`、`write_file`、`list_dir`、`shell`、`http_get`、`http_post`、`save_memory`、`recall_memory`、`notify`；Shell/文件/HTTP 带白名单，`SandboxChecker` 完整实现 |
+| MCP Client 类 | `mcp_servers.yaml` 解析、`McpClientService` 启动时连接、`tools/list` 拉工具、`McpToolAdapter` 包装成 `AegisTool` |
+| `AGENT.md` 类 | `ContextLoader` 加载 `.aegisos/agents/` 下每个 Agent 的 `AGENT.md` 正文拼接到 system prompt，这部分归 core 不归 tool |
 | Agent 定义类 | `AgentLoader.deriveProfile` 从 `AGENT.md` frontmatter 派生 `Profile`（含 `tools` / `mcp_servers` 等字段） |
 
 **关键 task 颗粒度**：US-4 的 task 数量较多，几个需要重点拆解的复杂 task：
@@ -321,21 +319,21 @@ US-3 实施完成后跑 `/speckit.analyze`。
 
 US-4 实施完成后跑 `/speckit.analyze`。
 
-**验收 Demo 三**：零代码 PR digest
+**验收 Demo 三**：每日 GitHub 日报
 
-业务方写一个 Agent 目录 `.oryxos/agents/daily-pr-digest/`（`AGENT.md` 正文描述任务），在 `mcp_servers.yaml` 配置 `github-mcp`（用社区现成的 MCP server），Agent 启动后能读 `AGENT.md` 正文、调 `github-mcp` 拉 PR、汇总成简报，整个过程业务方零代码只写了一个目录 + 配置。
+业务方创建 `.aegisos/agents/github-daily/`，目录包含 `AGENT.md` 和 `scripts/`，通过 `github_daily` MCP/Tool 获取脚本产出的 GitHub 热门项目 JSON，再结合 Memory 组织日报并调用 `notify` 推送；脚本产出进入上下文，脚本代码不进入上下文。
 
 ---
 
 ### 4.5 US-5：Web Service（核心能力五）
 
-**核心目标**：把 OryxOS 的所有能力通过 REST API 对外暴露，业务系统通过 HTTP 接入。这是 OryxOS 区别于个人助手项目的关键能力。
+**核心目标**：把 AegisOS 的所有能力通过 REST API 对外暴露，业务系统通过 HTTP 接入。这是 AegisOS 区别于个人助手项目的关键能力。
 
 **涉及的 Maven 模块**：
-- `oryxos-web`（核心能力五）
-- `oryxos-storage`（SQLite 持久化层，Session 持久化从内存版升级，并落 `tool_invocations` 和 `llm_calls` 审计表）
-- `oryxos-cli`（Picocli 12 个命令补全）
-- `oryxos-core`（`ConfigLoader`、`ContextLoader` 的 Bootstrap 加载补全）
+- `aegisos-web`（核心能力五）
+- `aegisos-storage`（SQLite 持久化层，Session 持久化从内存版升级，并落 `tool_invocations` 和 `llm_calls` 审计表）
+- `aegisos-cli`（Picocli 12 个命令补全）
+- `aegisos-core`（`ConfigLoader`、`ContextLoader` 的 Bootstrap 加载补全）
 
 **Spec-Kit 任务拆分思路**：US-5 依赖前 4 个 user story 都完成，是最后实施的 user story，Spec-Kit 拆解的任务密度最高。预期产出的 task 大类：
 
@@ -358,11 +356,11 @@ US-4 实施完成后跑 `/speckit.analyze`。
 
 US-5 完成后跑最后一次 `/speckit.analyze`，整个主体开发完成。
 
-**验收 Demo 四**：Web Service 同步调用
+**Web Service 验收项一**：同步调用
 
 外部系统 `POST /api/v1/sessions` 创建 Session，`POST /api/v1/sessions/{id}/messages` 发消息，`GET` 查历史，`DELETE` 归档，完整链路跑通。
 
-**验收 Demo 五**：Web Service 多端点联动
+**Web Service 验收项二**：多端点联动
 
 外部系统调 `GET /info` 查健康 + Provider 列表、`GET /profiles` 列可用 Agent、`GET /tools` 查可用 Tool、`POST /agents/{name}/invoke` 无状态调用 Agent、`GET /memory` 查长期记忆，5 个不同端点协同完成一次业务流程。
 
@@ -378,14 +376,14 @@ US-5 完成后跑最后一次 `/speckit.analyze`，整个主体开发完成。
 
 **AI agent 跑偏 constitution 时主动纠正**
 
-看到 Claude Code 生成的代码不符合 constitution，主动让 AI agent 重读 constitution 改正。OryxOS 最容易被写错的几个点：
+看到 Claude Code 生成的代码不符合 constitution，主动让 AI agent 重读 constitution 改正。AegisOS 最容易被写错的几个点：
 
 | 问题 | 正确做法 |
 |------|---------|
 | 用了非 JDK 21 特性 | 强制要求 JDK 21 |
 | 改了 ReAct 实现方式（依赖 Spring AI 自动执行） | 自实现，tool 被调两次时立刻查这里 |
 | 启用了 Spring AI 自动 tool 执行 | 必须禁用，见 constitution 原则四 |
-| 把 Tool 又拆成多模块 | 应该合并为一个 `oryxos-tool` 模块 |
+| 把 Tool 又拆成多模块 | 应该合并为一个 `aegisos-tool` 模块 |
 | Provider 用类型扫描 | 必须用显式 provider name 映射 |
 | `AgentLoader`/`AGENT.md` 当成 Tool | Agent 目录应该归 `ContextLoader`，在 core 模块里 |
 | 审计表没落库 | `tool_invocations` 和 `llm_calls` day one 写入 |
@@ -402,11 +400,11 @@ Spec-Kit 把代码拆成多个 task 后，AI agent 实施每个 task 时可能�
 
 ## 5. 项目交付物
 
-主体开发完成后 OryxOS 1.0 是一个可演示的最小完整 Agent OS 运行时内核，五大核心能力全部跑通。除了核心代码本身，还有几个交付物：
+主体开发完成后 AegisOS 1.0 是一个可演示的最小完整 Agent OS 运行时内核，五大核心能力全部跑通。除了核心代码本身，还有几个交付物：
 
 ### 项目主页
 
-OryxOS 作为开源项目需要一个独立的主页作为对外门面，技术栈用 VitePress 或类似静态站点工具，内容讲清楚 OryxOS 是什么、五大核心能力是什么、怎么快速开始。
+AegisOS 作为开源项目需要一个独立的主页作为对外门面，技术栈用 VitePress 或类似静态站点工具，内容讲清楚 AegisOS 是什么、五大核心能力是什么、怎么快速开始。
 
 ### Spec-Kit Artifacts 保留
 
@@ -422,11 +420,11 @@ API 参考文档、部署运维手册、贡献者指南这些剩余文档作为�
 
 ### 6.1 为什么从 Spec-Kit 切换到手动提示词
 
-主体开发完成后 OryxOS 进入增量阶段。这个阶段的工作性质跟主体开发完全不同：
+主体开发完成后 AegisOS 进入增量阶段。这个阶段的工作性质跟主体开发完全不同：
 
 | 维度 | 主体开发 | 增量开发 |
 |------|---------|---------|
-| 任务颗粒度 | 大（9 个模块同时建） | 小（加一个 Channel、补一个 Bug） |
+| 任务颗粒度 | 大（14 个模块同时建） | 小（加一个 Channel、补一个 Bug） |
 | 涉及文件数 | 多（跨模块） | 少（通常 1~3 个） |
 | 跨模块协作 | 有 | 通常无 |
 | 上下文 | 从零设计 | 已有代码 |
@@ -439,7 +437,7 @@ API 参考文档、部署运维手册、贡献者指南这些剩余文档作为�
 
 ```
 1. 社区贡献者认领一个 issue（主仓库标注 good-first-issue / feature-request / long-term-goal）
-2. 本地 fork + clone OryxOS
+2. 本地 fork + clone AegisOS
 3. 用 Claude Code 打开项目，跟 Claude 描述要做的改动
 4. Claude 在已有代码基础上修改、加测试、跑通
 5. 提 PR 到主仓库
@@ -488,7 +486,7 @@ Spec-Kit 还在快速迭代，工具本身变化频繁，使用时几个注意�
 
 ## 8. 总结
 
-OryxOS 的 AI 编程实施分两个阶段：
+AegisOS 的 AI 编程实施分两个阶段：
 
 ### 主体开发阶段（Spec-Kit）
 
@@ -499,7 +497,7 @@ US-1 → US-2 → ┌─ US-3 ─┐ → US-5
                └─ US-4 ─┘
 ```
 
-每个 user story 完成后有可演示 Demo，对应需求文档第 13 章的 5 个验收 Demo。
+每个 user story 完成后有可演示成果，对应需求文档第 13 章的 3 个端到端 Demo；Web Service 单独完成两项功能验收。
 
 ### 增量阶段（手动提示词 + Claude Code）
 
@@ -507,6 +505,6 @@ US-1 → US-2 → ┌─ US-3 ─┐ → US-5
 
 ---
 
-**Spec-Kit 跟 OryxOS 的契合度很高**：纯 greenfield、medium 规模（9 个模块）、需求清晰、AI agent 协作、方法论场景，每条都对得上。
+**Spec-Kit 跟 AegisOS 的契合度很高**：纯 greenfield、medium 规模（14 个模块）、需求清晰、AI agent 协作、方法论场景，每条都对得上。
 
-**核心策略是已有文档喂给 Spec-Kit，不重写**。OryxOS 已经投入了完整的业界调研 + 需求文档 + 技术方案，这些是 Spec-Kit 的最佳输入。**关键是喂的是最新版文档**：模块是 9 个不是 11 个，constitution 要包含"Spring AI 只用一半"、"审计 day one 落库"这些新决策，否则 Spec-Kit 生成的 plan 会按旧结构走偏。
+**核心策略是已有文档喂给 Spec-Kit，不重写**。AegisOS 已经投入了完整的业界调研 + 需求文档 + 技术方案，这些是 Spec-Kit 的最佳输入。**关键是喂的是最新版文档**：模块是 14 个，验收是三个端到端 Demo，constitution 要包含"Spring AI 只用一半"、"审计 day one 落库"这些新决策，否则 Spec-Kit 生成的 plan 会按旧结构走偏。

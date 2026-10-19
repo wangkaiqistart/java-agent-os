@@ -1,11 +1,11 @@
 # 工具体系
 
-Agent 能调用的每一个能力都是一个 `OryxTool`。无论是内置的文件读取器、HTTP 客户端、记忆操作，还是远程 MCP server，接口都是统一的。`ToolExecutor` 和 `ToolRegistry` 不关心工具具体做什么，它们只和接口打交道。
+Agent 能调用的每一个能力都是一个 `AegisTool`。无论是内置的文件读取器、HTTP 客户端、记忆操作，还是远程 MCP server，接口都是统一的。`ToolExecutor` 和 `ToolRegistry` 不关心工具具体做什么，它们只和接口打交道。
 
-## OryxTool 接口
+## AegisTool 接口
 
 ```java
-interface OryxTool {
+interface AegisTool {
     String getName();
     String getDescription();
     JsonSchema getInputSchema();
@@ -30,33 +30,19 @@ record ToolResult(
 
 ## 内置工具
 
-OryxOS 核心内置约两打工具——一组精心挑选的**通用原语**，覆盖绝大多数 Agent 需求而不锁死任何领域。启动时自动注册。Agent 能用哪些工具，取决于其 Profile 的 `tools` 列表。
+AegisOS 核心内置 9 个工具——一组覆盖文件、进程、HTTP、记忆和通知的**通用原语**。启动时自动注册。Agent 能用哪些工具，取决于其 Profile 的 `tools` 列表。
 
 | 工具 | 类 | 说明 | 沙箱校验 |
 | --- | --- | --- | --- |
 | `read_file` | `FileTools` | 从磁盘读取文件 | 路径白名单 |
 | `write_file` | `FileTools` | 写入或覆盖文件 | 路径白名单 |
-| `edit_file` | `FileTools` | 替换文件中一段唯一片段 | 路径白名单 |
-| `append_file` | `FileTools` | 向文件追加内容 | 路径白名单 |
 | `list_dir` | `FileTools` | 列出目录内容 | 路径白名单 |
-| `glob` | `FileTools` | 按 glob 通配查找文件 | 路径白名单 |
-| `grep` | `FileTools` | 正则搜索文件内容 | 路径白名单 |
-| `make_dir` | `FileTools` | 创建目录 | 路径白名单 |
-| `move_file` | `FileTools` | 移动 / 重命名文件 | 路径白名单（源 + 目标） |
-| `copy_file` | `FileTools` | 复制文件 | 路径白名单（源 + 目标） |
-| `delete_file` | `FileTools` | 删除文件（拒绝删目录） | 路径白名单 |
 | `shell` | `ShellTools` | 执行 Shell 命令 | 命令白名单 + argv 直传（无 Shell 解释）+ 超时 |
-| `http_get` / `http_post` | `HttpTools` | HTTP GET / POST | GET：默认放行 + SSRF 黑名单；POST：域名通配符白名单 |
-| `http_request` | `HttpTools` | 任意方法 HTTP（GET/POST/PUT/PATCH/DELETE）+ 请求头 | GET：默认放行 + SSRF；写方法：域名通配符白名单 |
-| `fetch_webpage` | `HttpTools` | 抓取网页并抽取可读正文（去 HTML） | 默认放行 + SSRF 黑名单 |
-| `download_file` | `HttpTools` | 下载 URL 到本地文件 | URL：默认放行 + SSRF；本地路径：路径白名单 |
-| `web_search` | `WebSearchTools` | 网络搜索 | 默认放行 + SSRF 黑名单 |
-| `current_time` | `UtilTools` | 返回指定时区的当前时间 | 无（纯计算） |
-| `json_extract` | `UtilTools` | 从 JSON 文本按路径取值 | 无（纯计算） |
+| `http_get` | `HttpTools` | HTTP GET | 域名白名单 |
+| `http_post` | `HttpTools` | HTTP POST | 域名白名单 |
 | `save_memory` | `MemoryTools` | 向 `MEMORY.md` 追加文本 | 无（始终允许） |
 | `recall_memory` | `MemoryTools` | 关键词检索 `MEMORY.md` | 无（始终允许） |
 | `notify` | `NotifyTools` | 向一个已注册的通知渠道推送消息 | 按名解析渠道 |
-| `ask_user` | `InteractionTools` | 向用户提问（交互式渠道） | 无 |
 
 `ShellTools` 除命令白名单外还强制执行可配置的超时时间（默认 30 秒）。超时的进程会被终止，工具返回不可重试的错误。
 
@@ -89,9 +75,9 @@ Agent 在其 **`AGENT.md` 正文**里用自然语言按名引用渠道——例�
 
 | | 零代码 | 轻代码 | 重代码 |
 | --- | --- | --- | --- |
-| **方式** | 写一份 `SKILL.md` + 接入现有社区 MCP server | 用任意语言写一个 MCP server，加到 `mcp_servers.yaml` | 在 Java 模块里实现 `OryxTool` 并注册为 Spring `@Bean` |
-| **运行位置** | MCP server 作为子进程或远程进程运行 | 同零代码，只是 server 是你自己写的 | 在 OryxOS JVM 进程内运行 |
-| **适用场景** | 标准集成：GitHub、Slack、数据库、网络搜索 | 领域特定逻辑、内部系统、私有 API | 性能敏感的工具，或需要直接访问 OryxOS 内部的工具 |
+| **方式** | 写一份 `SKILL.md` + 接入现有社区 MCP server | 用任意语言写一个 MCP server，加到 `mcp_servers.yaml` | 在 Java 模块里实现 `AegisTool` 并注册为 Spring `@Bean` |
+| **运行位置** | MCP server 作为子进程或远程进程运行 | 同零代码，只是 server 是你自己写的 | 在 AegisOS JVM 进程内运行 |
+| **适用场景** | 标准集成：GitHub、Slack、数据库、网络搜索 | 领域特定逻辑、内部系统、私有 API | 性能敏感的工具，或需要直接访问 AegisOS 内部的工具 |
 | **推荐对象** | 大多数生产场景 | 中等集成复杂度 | 有 Java 经验的深度用户 |
 
 零代码是首选方案。社区 MCP 生态已经覆盖了大多数常见集成。`SKILL.md` 为 Agent 提供如何使用这些工具的指令，MCP server 提供工具本身。
@@ -122,7 +108,7 @@ servers:
       Authorization: Bearer ${GITHUB_TOKEN}
 ```
 
-OryxOS 在启动时连接每个 MCP server：`stdio` 启动本地子进程；`http` / `sse` 连远程 SSE；`streamable` 走 Streamable HTTP。server 暴露的工具以其声明的名称注册到 `ToolRegistry` 中。
+AegisOS 在启动时连接每个 MCP server：`stdio` 启动本地子进程；`http` / `sse` 连远程 SSE；`streamable` 走 Streamable HTTP。server 暴露的工具以其声明的名称注册到 `ToolRegistry` 中。
 
 远程传输的 `url` 可以包含完整的端点路径和 query，例如 `https://mcp.example.com/team/mcp?tenant=example`，请求时两者都会保留。只填写服务根地址（没有路径或路径仅为 `/`）时，使用默认端点：`http`/`sse` 为 `/sse`，`streamable`/`auto` 为 `/mcp`。管理台支持五种传输选项，新建或编辑 server 时会保留远程 URL、headers 和请求超时。
 
@@ -134,9 +120,9 @@ OryxOS 在启动时连接每个 MCP server：`stdio` 启动本地子进程；`ht
 
 ## 推荐 MCP 服务器
 
-OryxOS 刻意让内置工具保持精简。内置工具是**通用原语**——文件、Shell、HTTP、记忆、通知。一切领域特定的能力都通过 **MCP server** 抵达 Agent：GitHub、GitLab、Slack、Google Drive、Notion、浏览器自动化、网络搜索、错误追踪——并且刻意地，**也包括 SQL 数据库（PostgreSQL、SQLite……）**。OryxOS 不提供内置 SQL 工具；数据库属于领域集成，所以你接入它的 MCP server，而不是把查询工具塞进核心。这是既定的零/低代码扩展路径：新增一个能力靠的是写一个包名，而不是写 Java。
+AegisOS 刻意让内置工具保持精简。内置工具是**通用原语**——文件、Shell、HTTP、记忆、通知。一切领域特定的能力都通过 **MCP server** 抵达 Agent：GitHub、GitLab、Slack、Google Drive、Notion、浏览器自动化、网络搜索、错误追踪——并且刻意地，**也包括 SQL 数据库（PostgreSQL、SQLite……）**。AegisOS 不提供内置 SQL 工具；数据库属于领域集成，所以你接入它的 MCP server，而不是把查询工具塞进核心。这是既定的零/低代码扩展路径：新增一个能力靠的是写一个包名，而不是写 Java。
 
-为了落到实处，OryxOS 附带一份精选、可直接复制的目录：**`config/mcp_servers.yaml.example`**。把它复制到 `.oryxos/mcp_servers.yaml`，只取消注释你需要的 server（默认全部注释掉，全新复制不会连接任何东西），为每个 server 设置所需的环境变量，然后重启。该目录严格匹配加载器的 Schema，列出以下类别里真实、知名的社区 server：
+为了落到实处，AegisOS 附带一份精选、可直接复制的目录：**`config/mcp_servers.yaml.example`**。把它复制到 `.aegisos/mcp_servers.yaml`，只取消注释你需要的 server（默认全部注释掉，全新复制不会连接任何东西），为每个 server 设置所需的环境变量，然后重启。该目录严格匹配加载器的 Schema，列出以下类别里真实、知名的社区 server：
 
 | 类别 | 目录中的 server |
 | --- | --- |
@@ -160,8 +146,8 @@ OryxOS 刻意让内置工具保持精简。内置工具是**通用原语**——
 ```yaml
 file:
   allowed_paths:
-    - .oryxos
-    - /tmp/oryxos
+    - .aegisos
+    - /tmp/aegisos
 ```
 
 **Shell 可执行文件白名单** — 作用于 `shell`。输入为结构化的 `executable` 和 `arguments` 数组；`ShellTools` 将 argv 直接交给 `ProcessBuilder`，不会启动 Shell，也不会解释管道、重定向、命令替换或命令分隔符。
@@ -173,11 +159,11 @@ file:
 }
 ```
 
-将 Shell 解释器或语言运行时加入白名单，是管理员对代码执行权限的显式授予：模型可按 OryxOS 进程所属的操作系统身份运行代码。argv 直传能防止 Shell 语法注入，但不隔离解释器的文件或网络影响。对不可信或多租户代码，应使用基于容器的 `execute_code` Runner（`oryxos.tool.execute-code.enabled=true` 且 `oryxos.sandbox.execution.backend=docker`，复用短命 docker ProcessStarter；无 docker 时 fail-loud，不静默回落 local）。
+将 Shell 解释器或语言运行时加入白名单，是管理员对代码执行权限的显式授予：模型可按 AegisOS 进程所属的操作系统身份运行代码。argv 直传能防止 Shell 语法注入，但不隔离解释器的文件或网络影响。对不可信或多租户代码，应使用基于容器的 `execute_code` Runner（`aegisos.tool.execute-code.enabled=true` 且 `aegisos.sandbox.execution.backend=docker`，复用短命 docker ProcessStarter；无 docker 时 fail-loud，不静默回落 local）。
 
 ### `delegate_agent`（同进程委托）
 
-把子任务交给另一个 Agent：隔离的无状态会话（`processStateless`），不是 A2A 网络协议。拒绝自我委托，嵌套深度默认上限 3（`oryxos.tool.delegate-agent.max-depth`）。可用 `oryxos.tool.delegate-agent.enabled=false` 关闭（默认开启）。
+把子任务交给另一个 Agent：隔离的无状态会话（`processStateless`），不是 A2A 网络协议。拒绝自我委托，嵌套深度默认上限 3（`aegisos.tool.delegate-agent.max-depth`）。可用 `aegisos.tool.delegate-agent.enabled=false` 关闭（默认开启）。
 
 ```yaml
 shell:
@@ -233,13 +219,13 @@ tools:
 
 `ToolRegistry` 是所有工具——内置工具和 MCP 工具——的集中目录，承担两项职责：
 
-**注册** — 启动时，所有 `OryxTool` Bean 完成注册，随后通过 JSON-RPC `tools/list` 发现 MCP server 提供的工具，并将其包装为 `McpProxyTool` 实例。
+**注册** — 启动时，所有 `AegisTool` Bean 完成注册，随后通过 JSON-RPC `tools/list` 发现 MCP server 提供的工具，并将其包装为 `McpProxyTool` 实例。
 
 **过滤** — `PromptBuilder` 请求某个 Agent 可用的工具时，`ToolRegistry.getToolsForProfile(profile)` 只返回 `profile.tools` 列表中包含的工具。即使工具已全局注册，Agent 也无法调用不在其 Profile 里的工具。
 
 ```java
 // PromptBuilder 用这个来为 LLM 构建 Function Calling 工具列表
-List<OryxTool> tools = toolRegistry.getToolsForProfile(profile);
+List<AegisTool> tools = toolRegistry.getToolsForProfile(profile);
 ```
 
 工具名称全局唯一。如果 MCP server 注册的工具与内置工具同名，启动会直接报错——不存在静默覆盖的情况。

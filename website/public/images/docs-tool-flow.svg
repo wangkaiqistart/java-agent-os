@@ -8,7 +8,7 @@
   <text x="140" y="120" fill="#1d4ed8" font-size="15" font-weight="bold" text-anchor="middle">LLM（想）</text>
   <text x="140" y="142" fill="#334155" font-size="12" text-anchor="middle">决定调哪个工具、传什么参数</text>
   <rect x="310" y="90" width="200" height="66" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.6"/>
-  <text x="410" y="120" fill="#b45309" font-size="15" font-weight="bold" text-anchor="middle">OryxOS（执行）</text>
+  <text x="410" y="120" fill="#b45309" font-size="15" font-weight="bold" text-anchor="middle">AegisOS（执行）</text>
   <text x="410" y="142" fill="#334155" font-size="12" text-anchor="middle">找到工具、跑它、拿结果</text>
   <rect x="580" y="90" width="200" height="66" rx="10" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
   <text x="680" y="116" fill="#15803d" font-size="15" font-weight="bold" text-anchor="middle">外部世界</text>

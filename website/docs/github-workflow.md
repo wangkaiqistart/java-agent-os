@@ -2,7 +2,7 @@
 
 > First time collaborating on GitHub? This one's for you. After it, you'll be able to open your first PR and read the "slang" in a review.
 
-Open source has one common workflow and one common set of "slang". They're the same on OryxOS, on the Linux kernel, on almost every GitHub project. **Learn it once, use it anywhere.** Don't be intimidated — every maintainer started out not understanding this either.
+Open source has one common workflow and one common set of "slang". They're the same on AegisOS, on the Linux kernel, on almost every GitHub project. **Learn it once, use it anywhere.** Don't be intimidated — every maintainer started out not understanding this either.
 
 ## The core flow: Fork → Branch → PR → Review → Merge
 
@@ -15,8 +15,8 @@ Click **Fork** at the top-right of the project page to copy the repo to your own
 ### 2. Clone & Branch
 
 ```bash
-git clone https://github.com/<your-username>/oryxos.git
-cd oryxos
+git clone https://github.com/<your-username>/aegisos.git
+cd aegisos
 git checkout -b fix/typo-in-readme    # semantic branch name: type/what
 ```
 
@@ -79,7 +79,7 @@ You'll see these abbreviations in reviews. They aren't showing off — they're e
 **Sync to the latest main (rebase)** — when your PR is behind, or has conflicts:
 
 ```bash
-git remote add upstream https://github.com/oryx-labs/oryxos.git   # once
+git remote add upstream https://github.com/aegis-labs/aegisos.git   # once
 git fetch upstream
 git rebase upstream/main
 # resolve conflicts if any, then:

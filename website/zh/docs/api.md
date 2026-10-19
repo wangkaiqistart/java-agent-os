@@ -1,11 +1,11 @@
 # REST API
 
-OryxOS 在 `/api/v1` 前缀下提供 JSON REST API。核心阶段不做认证——假设内网部署，业务系统直接 HTTP 接入。所有请求体和响应体均为 JSON。
+AegisOS 在 `/api/v1` 前缀下提供 JSON REST API。核心阶段不做认证——假设内网部署，业务系统直接 HTTP 接入。所有请求体和响应体均为 JSON。
 
 启动服务：
 
 ```bash
-oryxos serve --port 8080
+aegisos serve --port 8080
 ```
 
 ---
@@ -72,7 +72,7 @@ oryxos serve --port 8080
 ```json
 // data
 {
-  "application": "oryxos",
+  "application": "aegisos",
   "providers": ["deepseek", "qwen"]
 }
 ```
@@ -81,13 +81,13 @@ oryxos serve --port 8080
 
 ## Agent
 
-一个 Agent 就是目录 `.oryxos/agents/<name>/`，其中 `AGENT.md` = frontmatter（这个 Agent 的 Profile）+ 任务正文。以下端点管理完整的动态生命周期——创建、查询、更新、删除、调用，以及查看 Agent 的记忆和控制台会话。
+一个 Agent 就是目录 `.aegisos/agents/<name>/`，其中 `AGENT.md` = frontmatter（这个 Agent 的 Profile）+ 任务正文。以下端点管理完整的动态生命周期——创建、查询、更新、删除、调用，以及查看 Agent 的记忆和控制台会话。
 
 ### 创建 Agent
 
 **POST** `/api/v1/agents`
 
-脚手架出 `.oryxos/agents/<name>/AGENT.md`，派生其 Profile 并注册。失败时回滚已创建的目录。
+脚手架出 `.aegisos/agents/<name>/AGENT.md`，派生其 Profile 并注册。失败时回滚已创建的目录。
 
 ```json
 // 请求
@@ -204,7 +204,7 @@ null
 
 **GET** `/api/v1/agents/{name}/memory`
 
-返回这个 Agent 的 `MEMORY.md` 全文（`.oryxos/agents/<name>/MEMORY.md`，无 Agent 上下文时回退到全局 `.oryxos/memory/MEMORY.md`）。记忆按 Agent 隔离，每行带时间戳。
+返回这个 Agent 的 `MEMORY.md` 全文（`.aegisos/agents/<name>/MEMORY.md`，无 Agent 上下文时回退到全局 `.aegisos/memory/MEMORY.md`）。记忆按 Agent 隔离，每行带时间戳。
 
 ```json
 // data —— MEMORY.md 文本
@@ -297,7 +297,7 @@ null
 
 ## Provider
 
-Provider **动态管理**，持久化在 SQLite（`providers` 表）。运行时按 provider 名从注册表解析 `ChatModel`，并按 `(name | apiKey | baseUrl)` 缓存，因此改 key 或 URL 会在下次调用时重建模型。名字 `mock` 是内置的假模型，不需要 key 或 URL。`application.yml` 里的 `oryxos.providers[]` 仅在表中缺失时于启动时**播种**进去——此后以数据库为准。
+Provider **动态管理**，持久化在 SQLite（`providers` 表）。运行时按 provider 名从注册表解析 `ChatModel`，并按 `(name | apiKey | baseUrl)` 缓存，因此改 key 或 URL 会在下次调用时重建模型。名字 `mock` 是内置的假模型，不需要 key 或 URL。`application.yml` 里的 `aegisos.providers[]` 仅在表中缺失时于启动时**播种**进去——此后以数据库为准。
 
 > 按用户选择，`apiKey` 以**明文**回显（核心阶段内网部署）。
 
@@ -502,7 +502,7 @@ curl -N -H "Accept: text/event-stream" -H "Content-Type: application/json" \
 | `tool_end` | `{"name":"shell","success":true}` | 工具调用结束 |
 | `done` | `{"reply":"完整回复"}` | 终结事件（与 error 二选一,恰好一个） |
 | `error` | `{"code":500,"message":"…"}` | 流中失败的终结事件 |
-| `: ping` | —（SSE 注释行） | 心跳,间隔由 `oryxos.web.sse.heartbeat-seconds` 控制（默认 15s）,解析器应忽略 |
+| `: ping` | —（SSE 注释行） | 心跳,间隔由 `aegisos.web.sse.heartbeat-seconds` 控制（默认 15s）,解析器应忽略 |
 
 语义承诺:`token` 按序拼接等于 `done.reply`;流开始前的失败（404/401/400）仍返 JSON 状态码;客户端中途断开后服务端照常完成本轮并落库、审计照写（断开不退款）;流式与非流式的 `llm_calls`/`tool_invocations` 审计口径完全一致。完整契约见仓库 `specs/019-sse-streaming/contracts/sse-protocol.md`。
 
@@ -660,7 +660,7 @@ curl -N -H "Accept: text/event-stream" -H "Content-Type: application/json" \
 
 **GET** `/api/v1/profiles`
 
-返回派生出的 Profile——`.oryxos/agents/` 下每个 Agent 目录一个。
+返回派生出的 Profile——`.aegisos/agents/` 下每个 Agent 目录一个。
 
 ```json
 // data —— ProfileView[]
@@ -709,7 +709,7 @@ Sandbox 白名单分三类——`FILE`（允许路径）、`SHELL`（允许命�
 ```json
 // data
 {
-  "file": ["/home/user/project/.oryxos"],
+  "file": ["/home/user/project/.aegisos"],
   "shell": ["ls", "cat", "echo", "grep"],
   "http": ["*.open-meteo.com", "hn.algolia.com"]
 }
@@ -823,7 +823,7 @@ Sandbox 白名单分三类——`FILE`（允许路径）、`SHELL`（允许命�
 
 ### 展示层脱敏
 
-时间线里 TOOL 步的 `inputSummary`/`resultSummary`/`errorMessage` 为**截断（200 字符）+ 脱敏**后的展示值:API key 已知前缀（`sk-…`/`oryx_…`）、`Authorization` 凭证、URL 账密段、`password/secret/token/api_key` 类字段值 → `前4字符+****` 掩码。落库保持原文（排障现场完整，库访问=运维特权边界），规则内置不可配置；不含敏感形态的内容原样展示。
+时间线里 TOOL 步的 `inputSummary`/`resultSummary`/`errorMessage` 为**截断（200 字符）+ 脱敏**后的展示值:API key 已知前缀（`sk-…`/`aegis_…`）、`Authorization` 凭证、URL 账密段、`password/secret/token/api_key` 类字段值 → `前4字符+****` 掩码。落库保持原文（排障现场完整，库访问=运维特权边界），规则内置不可配置；不含敏感形态的内容原样展示。
 
 ---
 
@@ -840,7 +840,7 @@ provider:
       model: qwen-plus
 ```
 
-**业务指标（023）**：`GET /actuator/prometheus`（既有端点）新增 `oryxos_` 前缀业务指标，供企业监控栈聚合与告警——`oryxos_llm_calls_total{provider,model,outcome}`（与 llm_calls 行数同口径）、`oryxos_llm_call_duration_seconds`、`oryxos_llm_tokens_total{type}`、`oryxos_tool_invocations_total{tool,outcome}`、`oryxos_policy_blocks_total{tool}`、`oryxos_fallback_switches_total{from,to}`。指标供监控聚合、审计供精确回放（正交，指标不改变审计落库口径）；未发生对应事件时指标缺席或为零均为正常形态。
+**业务指标（023）**：`GET /actuator/prometheus`（既有端点）新增 `aegisos_` 前缀业务指标，供企业监控栈聚合与告警——`aegisos_llm_calls_total{provider,model,outcome}`（与 llm_calls 行数同口径）、`aegisos_llm_call_duration_seconds`、`aegisos_llm_tokens_total{type}`、`aegisos_tool_invocations_total{tool,outcome}`、`aegisos_policy_blocks_total{tool}`、`aegisos_fallback_switches_total{from,to}`。指标供监控聚合、审计供精确回放（正交，指标不改变审计落库口径）；未发生对应事件时指标缺席或为零均为正常形态。
 
 ---
 
@@ -857,7 +857,7 @@ provider:
 ```json
 // data —— FileNode
 {
-  "name": ".oryxos",
+  "name": ".aegisos",
   "path": "",
   "type": "dir",
   "children": [

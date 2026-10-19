@@ -1,6 +1,6 @@
 # Roadmap
 
-OryxOS is built with a clear philosophy: **slow is smooth, smooth is fast**. Start with a solid single-node runtime kernel. Make it actually usable. Then grow distributed capabilities on top of it — step by step, each phase proven by real usage.
+AegisOS is built with a clear philosophy: **slow is smooth, smooth is fast**. Start with a solid single-node runtime kernel. Make it actually usable. Then grow distributed capabilities on top of it — step by step, each phase proven by real usage.
 
 ## Phase 1 — Single-node Runtime Kernel *(current)*
 
@@ -24,9 +24,9 @@ Get the five core capabilities working on a single node:
 
 Make the runtime horizontally scalable:
 
-- Stateless instances: no local state in the OryxOS process
+- Stateless instances: no local state in the AegisOS process
 - Externalized state: sessions, memory, and audit data stored outside the instance
-- Multi-replica deployment: run multiple OryxOS instances behind a load balancer
+- Multi-replica deployment: run multiple AegisOS instances behind a load balancer
 - High availability: no single point of failure
 
 ## Phase 3 — Cross-node Agent Collaboration *(vision)*

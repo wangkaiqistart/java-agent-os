@@ -1,16 +1,16 @@
-# OryxOS 是什么
+# AegisOS 是什么
 
-***OryxOS 是企业私有部署的 Agent 操作系统：你用一句自然语言发布任务，它把任务拆解、组织一支 Agent 团队分工协作、把结果交付给你。让每一家公司，都能用自然语言跑起来自己的 Agent。***
+***AegisOS 是企业私有部署的 Agent 操作系统：你用一句自然语言发布任务，它把任务拆解、组织一支 Agent 团队分工协作、把结果交付给你。让每一家公司，都能用自然语言跑起来自己的 Agent。***
 
 ![一句话任务 → 拆解 → 组织一支 Agent 团队 → 分工协作 → 交付结果](/images/pipeline-zh.svg)
 
-![OryxOS Architecture](/images/architecture.svg)
+![AegisOS Architecture](/images/architecture.svg)
 
 ## 这条路我们走到了哪
 
 已交付的和还在路上的，明明白白：
 
-- **今天已交付**：用**一句话**（或一个 markdown 目录）定义一个 Agent，它立刻上线——免重启、零代码。它自带记忆、24 个内置工具、MCP 连接器、全局 Skill 库、通知推送、cron 定时、沙箱执行和全链路审计——全部跑在你自己的基础设施上。
+- **今天已交付**：用**一句话**（或一个 markdown 目录）定义一个 Agent，它立刻上线——免重启、零代码。它自带记忆、9 个内置工具、MCP 连接器、全局 Skill 库、通知推送、cron 定时、沙箱执行和全链路审计——全部跑在你自己的基础设施上。
 - **北极星**（设计推进中，见[路线图](./roadmap)）：一句话发布一个任务，一支 Agent **团队**自组织交付——协调者拆解、专家们并行干活、评审者合并把关——每一步都有审计，危险动作有人审批。
 
 ## Agent 公式
@@ -19,15 +19,15 @@
 
 ![自然语言 + Memory + Tool + MCP + Skill + 知识库 + Notify = 一个能干活的 Agent](/images/agent-formula-zh.svg)
 
-这就是 OryxOS 的全部要义：**把「定义一个 Agent」的成本压到趋近于零。** 你写想要什么，OS 负责供给能力、安全护栏和审计记录。
+这就是 AegisOS 的全部要义：**把「定义一个 Agent」的成本压到趋近于零。** 你写想要什么，OS 负责供给能力、安全护栏和审计记录。
 
-具体形态是 **一个目录 = 一个 Agent**：`.oryxos/agents/<name>/` 下的一个目录，一份 `AGENT.md`——YAML frontmatter 是这个 Agent 的 profile（身份、对话的模型、引用哪些工具 / Skill），正文是任务指令。目录放进去就上线。通过 REST API 或 Web 管理台在运行时创建、编辑、删除 Agent——包括用一句话生成一个完整的 Agent。业务系统走 HTTP 接入。数据始终不出你的基础设施。
+具体形态是 **一个目录 = 一个 Agent**：`.aegisos/agents/<name>/` 下的一个目录，一份 `AGENT.md`——YAML frontmatter 是这个 Agent 的 profile（身份、对话的模型、引用哪些工具 / Skill），正文是任务指令。目录放进去就上线。通过 REST API 或 Web 管理台在运行时创建、编辑、删除 Agent——包括用一句话生成一个完整的 Agent。业务系统走 HTTP 接入。数据始终不出你的基础设施。
 
 ## 什么是 agent harness（以及为什么是 OS）
 
 **Agent harness（运行骨架）**是套在模型外面、把模型变成能干活的 Agent 的那层脚手架：驱动 reason → act → observe 的循环、它能调用的工具与执行工具的机制、每次 LLM 调用前组装好的上下文、它积累的记忆、约束它的沙箱、记录它做过什么的审计。裸模型只会生成文本——harness 才让它可靠、安全地『做事』。
 
-而企业从来不会只跑一个 Agent。OryxOS 是一个 **Agent Harness OS**：给每个 Agent 同一套生产级 harness，并像操作系统调度进程一样运行一整队 Agent。三层看——**模型 → Harness → OS**：
+而企业从来不会只跑一个 Agent。AegisOS 是一个 **Agent Harness OS**：给每个 Agent 同一套生产级 harness，并像操作系统调度进程一样运行一整队 Agent。三层看——**模型 → Harness → OS**：
 
 | | 裸模型 | Agent Harness | Agent Harness OS |
 | --- | --- | --- | --- |
@@ -47,22 +47,22 @@
 
 ### ReAct Loop
 
-自实现的推理引擎，不被任何外部 Agent 框架包裹。每次迭代：组装 Prompt（系统提示词 + Bootstrap 上下文 + 长期记忆 + 对话历史 + 可用工具列表），调用 LLM，检查响应中的工具调用，在沙箱管控下执行，把结果以结构化的工具消息回填，继续循环——直到给出最终答案或达到迭代上限。整个循环只有数十行、完全透明可检查；各家厂商的协议差异由适配层吸收，而工具执行始终由 OryxOS 自己掌控。
+自实现的推理引擎，不被任何外部 Agent 框架包裹。每次迭代：组装 Prompt（系统提示词 + Bootstrap 上下文 + 长期记忆 + 对话历史 + 可用工具列表），调用 LLM，检查响应中的工具调用，在沙箱管控下执行，把结果以结构化的工具消息回填，继续循环——直到给出最终答案或达到迭代上限。整个循环只有数十行、完全透明可检查；各家厂商的协议差异由适配层吸收，而工具执行始终由 AegisOS 自己掌控。
 
 ### 记忆系统
 
-当前两层。会话记忆保存对话历史，持久化、重启可恢复。长期记忆**按 Agent 隔离**——每个 Agent 通过 `save_memory` 写入自己的 `MEMORY.md`、通过 `recall_memory` 检索；每次触发还会自动记入它的归档记忆。记忆注入每次系统提示词，让 Agent 跨对话保持上下文。升级路径——语义化的向量记忆 + 内置知识库——是[路线图](./roadmap)上的头部项。
+当前两层。会话记忆保存对话历史，持久化、重启可恢复。长期记忆使用可插拔的 `LongTermMemoryStore`：默认是 `MarkdownMemoryStore` 和 `MEMORY.md`，也支持 SQLite 与自托管 Mem0。Agent 通过 `save_memory` 写入、通过 `recall_memory` 检索；记忆会注入每次系统提示词，让 Agent 跨对话保持上下文。进程内语义检索和 Memory Wiki 属于扩展阶段。
 
 ### 工具体系
 
-**24 个内置工具**覆盖基础场景：文件操作（读 / 写 / 列目录 / 追加 / 移动 / 复制 / 删除 / 建目录）、Shell、HTTP（get / post / 任意请求 / 抓网页 / 下载）、时间与 JSON 工具、记忆，以及 `notify`。全部在沙箱管控下执行——文件走路径白名单、Shell 走命令白名单、HTTP **读写分治**（读：默认放行 + SSRF 黑名单；写：域名通配符白名单）——每次调用都有审计。`notify` 按名字推送到通知渠道（飞书 / 企业微信 / 钉钉 / Slack / Discord / Telegram / WhatsApp / Teams / Google Chat / Mattermost / Matrix / 通用 webhook），渠道本身也是支持完整 CRUD 的动态注册表。
+**9 个内置工具**覆盖基础场景：`read_file`、`write_file`、`list_dir`、`shell`、`http_get`、`http_post`、`save_memory`、`recall_memory` 和 `notify`。工具按适用范围执行沙箱校验，每次调用都有审计；`notify` 按名称推送到动态注册的通知渠道。
 
 扩展按三档进行，按工作量从低到高：
 
 | 档位 | 工作量 | 方式 |
 | --- | --- | --- |
 | 零代码 | 最低 | 写一份 `SKILL.md` 描述任务，引用社区现有的 MCP server |
-| 轻代码 | 中等 | 用任意语言写一个 MCP server，OryxOS 作为 MCP Client 接入 |
+| 轻代码 | 中等 | 用任意语言写一个 MCP server，AegisOS 作为 MCP Client 接入 |
 | 重代码 | 最高 | 写一个原生进程内工具，直接注册 |
 
 所有工具——内置的、MCP 对接的、原生的——都经由同一个 `ToolRegistry` 注册，向 ReAct Loop 暴露统一接口。

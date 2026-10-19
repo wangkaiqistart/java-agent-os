@@ -1,16 +1,16 @@
 # 架构
 
-OryxOS 是一个 Spring Boot 3.x 单体应用，运行在 JDK 21 上，整个系统——LLM 路由、推理循环、记忆系统、工具体系、REST API 以及 Web 管理台——打包在一个 fat JAR 里交付。除了 JVM 和你配置的 LLM Provider 凭证，不需要任何外部依赖。状态存储在 SQLite 和工作区目录下的本地文件系统中（默认 `.oryxos/`，可配置——见下文）。
+AegisOS 是一个 Spring Boot 3.x 单体应用，运行在 JDK 21 上，整个系统——LLM 路由、推理循环、记忆系统、工具体系、REST API 以及 Web 管理台——打包在一个 fat JAR 里交付。除了 JVM 和你配置的 LLM Provider 凭证，不需要任何外部依赖。状态存储在 SQLite 和工作区目录下的本地文件系统中（默认 `.aegisos/`，可配置——见下文）。
 
-推理引擎是自实现的 ReAct Loop。Spring AI 的 OpenAI connector 负责 OpenAI 兼容 LLM 协议转换；循环本身、上下文组装、工具调度和审计记录，都由 OryxOS 自己掌控。
+推理引擎是自实现的 ReAct Loop。Spring AI 的 OpenAI connector 负责 OpenAI 兼容 LLM 协议转换；循环本身、上下文组装、工具调度和审计记录，都由 AegisOS 自己掌控。
 
 ## 架构图
 
-![OryxOS Architecture](/images/architecture.svg)
+![AegisOS Architecture](/images/architecture.svg)
 
 ## 分层架构图
 
-![OryxOS Layer Diagram](/images/layer-diagram.svg)
+![AegisOS Layer Diagram](/images/layer-diagram.svg)
 
 **接入层** — 系统入口。CLI 处理交互式使用和本地调试。REST API 处理业务系统集成，同时支撑 Web 管理台。两者都汇入同一个引擎层。
 
@@ -22,33 +22,33 @@ OryxOS 是一个 Spring Boot 3.x 单体应用，运行在 JDK 21 上，整个系
 
 ## 一个目录 = 一个 Agent
 
-每个 Agent 就是一个目录：`.oryxos/agents/<name>/`。不再有独立的 `.oryxos/profiles/`——Profile 本身就是这个 Agent。
+每个 Agent 就是一个目录：`.aegisos/agents/<name>/`。不再有独立的 `.aegisos/profiles/`——Profile 本身就是这个 Agent。
 
 - `AGENT.md` = YAML frontmatter（这个 Agent 的 Profile：`name`、`description`、`identity`、`provider`/`model`、`tools`、`mcp_servers`、`channels`、`bootstrap`、`settings`、`schedules`）+ 正文任务指令（注入 system prompt）。`AgentLoader.deriveProfile(agentDir)` 把 frontmatter 派生成底座认识的 `Profile`。
 - 同目录下可选的 `skills/*.md` 子指令、`scripts/`、`REFERENCE.md` 通过底座既有的 `read_file` / `shell` 工具**按需加载**——没有全局能力索引，没有 `use_skill`。
-- 长期记忆是**每个 Agent 独立的**：`.oryxos/agents/<name>/MEMORY.md`（无 Agent 上下文时回退到全局 `.oryxos/memory/MEMORY.md`）。记忆行带时间戳，且每次触发某个 Agent 都会自动记入该 Agent 的归档记忆。
+- 长期记忆是**每个 Agent 独立的**：`.aegisos/agents/<name>/MEMORY.md`（无 Agent 上下文时回退到全局 `.aegisos/memory/MEMORY.md`）。记忆行带时间戳，且每次触发某个 Agent 都会自动记入该 Agent 的归档记忆。
 
 ## 动态 Agent 生命周期
 
 Agent 可在运行时创建、更新、移除——无需重启。
 
-- **REST CRUD** — `POST /api/v1/agents` 写入 `.oryxos/agents/<name>/AGENT.md`、派生 Profile 并注册（失败回滚）；`PUT` 更新（调度变更会先注销再重新注册）；`DELETE` 是软删除：取消调度 → 从注册表移除 → 归档目录（绝不物理删除）。
-- **拖拽即上线（WorkspaceWatcher）** — 基于 JDK `WatchService` 的监听器观察 `.oryxos/agents/`。往里放一个目录，Agent 立即生效；该监听器也让注册表与磁盘上的编辑保持同步。
+- **REST CRUD** — `POST /api/v1/agents` 写入 `.aegisos/agents/<name>/AGENT.md`、派生 Profile 并注册（失败回滚）；`PUT` 更新（调度变更会先注销再重新注册）；`DELETE` 是软删除：取消调度 → 从注册表移除 → 归档目录（绝不物理删除）。
+- **拖拽即上线（WorkspaceWatcher）** — 基于 JDK `WatchService` 的监听器观察 `.aegisos/agents/`。往里放一个目录，Agent 立即生效；该监听器也让注册表与磁盘上的编辑保持同步。
 - **一句话生成** — `POST /api/v1/agents/{name}/generate-files` 用一句话经 LLM 生成 `AGENT.md` 草稿。草稿**仅供预览**——在用户确认并保存（`POST /api/v1/agents/{name}/files`）之前，既不落盘也不注册。
 
 ## 动态 Provider 与通知渠道注册表
 
 Provider 和通知渠道不再是静态配置——两者都存储在 SQLite 中，通过 CRUD 端点管理。
 
-- **Provider**（`providers` 表）— `ProviderApiController` 暴露创建/列表/查询/更新/删除。运行时引擎按 Provider 名称动态解析 `ChatModel`；模型按 `(name | apiKey | baseUrl)` 构建并缓存，因此修改 key 或 base URL 会在下次调用时重建模型。`oryxos.providers[]` 配置在首次启动时**种入**该表，之后以数据库为准。宪法原则三（显式的 `provider name → ChatModel` 映射）保持不变——只是这张映射表变得可在运行时修改。`mock` Provider 是内置的假模型，无需 key 或 URL。
+- **Provider**（`providers` 表）— `ProviderApiController` 暴露创建/列表/查询/更新/删除。运行时引擎按 Provider 名称动态解析 `ChatModel`；模型按 `(name | apiKey | baseUrl)` 构建并缓存，因此修改 key 或 base URL 会在下次调用时重建模型。`aegisos.providers[]` 配置在首次启动时**种入**该表，之后以数据库为准。宪法原则三（显式的 `provider name → ChatModel` 映射）保持不变——只是这张映射表变得可在运行时修改。`mock` Provider 是内置的假模型，无需 key 或 URL。
 - **通知渠道**（`notify_channels` 表）— `NotifyChannelApiController` 暴露同样的 CRUD。渠道有一个 `type`（`feishu` | `wecom` | `dingtalk` | `webhook`）和一个 URL。`notify` 工具**按名称**引用渠道（在 `AGENT.md` 正文里，例如「发到 team-lark」）；工具把已注册的渠道解析成对应的适配器和 URL。frontmatter 里不再有 `notify_channels` 字段。
 
 ## 可配置的工作区根目录
 
-工作区目录默认为 `.oryxos`，但可配置：
+工作区目录默认为 `.aegisos`，但可配置：
 
-- `application.yml` 中的 `oryxos.root` — 影响 Spring 启动的命令（`serve` / `gateway`）。
-- `ORYXOS_ROOT` 环境变量或 `-Doryxos.root=` — 影响不启动 Spring 的轻量 CLI 命令（`init` / `status` / `profile`），并通过 Spring 宽松绑定同样影响已启动的命令。
+- `application.yml` 中的 `aegisos.root` — 影响 Spring 启动的命令（`serve` / `gateway`）。
+- `AEGISOS_ROOT` 环境变量或 `-Daegisos.root=` — 影响不启动 Spring 的轻量 CLI 命令（`init` / `status` / `profile`），并通过 Spring 宽松绑定同样影响已启动的命令。
 
 配置的根目录在运行时会自动加入文件沙箱白名单，因此更改根目录不会破坏文件工具。
 
@@ -88,17 +88,22 @@ Provider 和通知渠道不再是静态配置——两者都存储在 SQLite 中
 
 | 模块 | 职责 |
 | --- | --- |
-| `oryxos-core` | 核心抽象与接口：`OryxTool`、`Session`、`Profile`、`ContextLoader`、`ReActLoop`、`PromptBuilder`、`ToolExecutor`、`AgentService`、`AgentLoader` |
-| `oryxos-provider` | LLM 路由：`ProviderService`、Function Calling 格式适配、由 Provider 注册表支撑的动态 `provider name → ChatModel` 解析 |
-| `oryxos-memory` | 记忆系统：`MemoryService` 门面、`LongTermMemory`（读写每个 Agent 的 `MEMORY.md`）、`MemoryTools`（`save_memory`、`recall_memory`） |
-| `oryxos-tool` | 工具体系：内置工具（`FileTools`、`ShellTools`、`HttpTools`、`NotifyTools`）、`McpClientService`、`McpToolAdapter`、`ToolRegistry`、`SandboxChecker` |
-| `oryxos-channel-cli` | CLI 渠道：`CliChannel`、`oryxos chat` 命令实现 |
-| `oryxos-web` | REST API：十个 `ApiController`、`GlobalExceptionHandler`、统一响应信封、OpenAPI 规范，以及通过 `/admin/` 提供的 Vue 管理台 |
-| `oryxos-storage` | 持久化：SQLite via Spring Data JPA——会话、工具调用、LLM 调用、定时任务、任务执行、记忆条目、通知渠道、Provider 等仓库 |
-| `oryxos-cli` | CLI 入口：Picocli 主入口、12 个子命令、`ConfigLoader`（凭证和配置校验） |
-| `oryxos-boot` | Spring Boot 启动模块：主类、自动配置、依赖聚合 |
+| `aegisos-core` | 核心抽象与运行时：`AegisTool`、`Session`、`Profile`、`ContextLoader`、`AgentLoader`、`ReActLoop`、`PromptBuilder`、`ToolExecutor`、`AgentService`、`AgentScheduler` |
+| `aegisos-persona` | 内置人格预设与自定义人格存储/服务 |
+| `aegisos-provider` | LLM 路由：`ProviderService`、Function Calling 适配、显式的 Provider 到 `ChatModel` 映射 |
+| `aegisos-memory` | 记忆门面与可插拔长期记忆后端（`MarkdownMemoryStore`、`SqliteMemoryStore`、`Mem0MemoryStore`），以及 `save_memory` / `recall_memory` |
+| `aegisos-knowledge` | 知识解析、索引、检索流水线、可插拔片段存储与知识工具 |
+| `aegisos-tool` | 9 个内置工具、MCP Client/适配器、`ToolRegistry` 与 Sandbox 实现 |
+| `aegisos-channel-cli` | CLI 渠道与 `aegisos chat` 实现 |
+| `aegisos-channel-feishu` | 飞书入站/出站渠道适配器 |
+| `aegisos-channel-wecom` | 企微入站/出站渠道适配器 |
+| `aegisos-channel-dingtalk` | 钉钉入站/出站渠道适配器 |
+| `aegisos-web` | REST API、异常处理、OpenAPI 以及 Vue 管理台 |
+| `aegisos-storage` | SQLite 持久化：会话、审计、定时任务、记忆、通知渠道和 Provider |
+| `aegisos-cli` | Picocli 入口与配置加载 |
+| `aegisos-boot` | Spring Boot 启动、自动配置与依赖聚合 |
 
-模块之间通过接口通信。新增 Channel 或 Tool 实现只需新建模块，`oryxos-core` 不受影响。
+模块之间通过接口通信。新增 Channel 或 Tool 实现只需新建模块，`aegisos-core` 不受影响。
 
 ## 关键技术决策
 
@@ -110,7 +115,7 @@ Provider 和通知渠道不再是静态配置——两者都存储在 SQLite 中
 | 4 | Provider 解析 | 由 SQLite 注册表支撑的动态 `provider name → ChatModel` 映射，按 `(name\|apiKey\|baseUrl)` 缓存 | 显式映射（绝不靠 Bean 类型扫描），但可在运行时修改，Provider 增改无需重启 |
 | 5 | HTTP 服务层 | Spring MVC + Java 21 虚拟线程 | 同步风格的代码，单节点支持数千并发请求；扩展阶段可用 `SseEmitter` 支持流式 |
 | 6 | 沙箱策略 | 应用层路径/模式白名单，可运行时管理 | `SecurityManager` 从 JDK 17 起废弃、JDK 21 上不可用；完整的容器级沙箱隔离是扩展阶段的工作 |
-| 7 | 持久化方案 | SQLite + Spring Data JPA 存关系型数据；每个 Agent 的 `MEMORY.md` 存长期记忆 | 单体部署无需外部数据库进程；审计表从第一天就写入，审计能力不会是事后追加的 |
+| 7 | 持久化方案 | SQLite + Spring Data JPA 存关系型数据；长期记忆可插拔（默认 `MarkdownMemoryStore`，另有 SQLite/Mem0） | 默认单体部署无需外部数据库进程；审计表从第一天就写入，审计能力不会是事后追加的 |
 
 ## 技术栈
 
@@ -124,7 +129,7 @@ Provider 和通知渠道不再是静态配置——两者都存储在 SQLite 中
 | 命令行 | Picocli |
 | YAML 解析 | SnakeYAML |
 | 持久化 | SQLite + Spring Data JPA（`schema.sql` 手动维护；`CREATE TABLE IF NOT EXISTS`，不依赖脆弱的 SQLite `ALTER`） |
-| 长期记忆 | 每个 Agent 的 `MEMORY.md` 平文件 + 关键词检索；扩展阶段规划向量检索 |
+| 长期记忆 | 默认 `MarkdownMemoryStore`（`MEMORY.md`）+ 关键词检索，也支持 SQLite/Mem0；扩展阶段规划进程内向量检索 |
 | MCP 集成 | MCP Java SDK（MCP Client 用于连接外部 MCP server） |
 | 日志 | Logback + SLF4J，结构化 JSON 输出 |
 | 构建 | Maven 多模块 |

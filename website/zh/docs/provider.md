@@ -1,10 +1,10 @@
 # Provider
 
-OryxOS 使用 Spring AI 的 OpenAI connector 作为薄协议适配层，接入 OpenAI 兼容端点。在此之上，`ProviderService` 负责路由、审计，以及让多 Provider 可靠运行的显式名称到模型的映射。
+AegisOS 使用 Spring AI 的 OpenAI connector 作为薄协议适配层，接入 OpenAI 兼容端点。在此之上，`ProviderService` 负责路由、审计，以及让多 Provider 可靠运行的显式名称到模型的映射。
 
 ## Provider 是动态的
 
-Provider 不再是启动时固定不变的映射表。它现在是**存储在 SQLite（`providers` 表）里、可运行时增删改的记录**，通过 `/api/v1/providers` REST 端点或管理台的 **Provider** 页面管理。无需重启 OryxOS 即可新增、编辑、删除 Provider。
+Provider 不再是启动时固定不变的映射表。它现在是**存储在 SQLite（`providers` 表）里、可运行时增删改的记录**，通过 `/api/v1/providers` REST 端点或管理台的 **Provider** 页面管理。无需重启 AegisOS 即可新增、编辑、删除 Provider。
 
 一条 Provider 记录有四个字段：
 
@@ -19,11 +19,11 @@ Provider 不再是启动时固定不变的映射表。它现在是**存储在 SQ
 
 ## 启动播种——从配置写入数据库
 
-启动时 OryxOS 读取 `application.yml` 里的 `oryxos.providers` 列表，并把每一条**播种**进 `providers` 表——**仅当同名 Provider 尚不存在时**才写入。播种之后，**数据库是唯一真相源**：修改配置里的 `oryxos.providers` 不会覆盖已经在 DB 里的 Provider。请通过 API 或管理台管理线上 Provider，而不是改配置。
+启动时 AegisOS 读取 `application.yml` 里的 `aegisos.providers` 列表，并把每一条**播种**进 `providers` 表——**仅当同名 Provider 尚不存在时**才写入。播种之后，**数据库是唯一真相源**：修改配置里的 `aegisos.providers` 不会覆盖已经在 DB 里的 Provider。请通过 API 或管理台管理线上 Provider，而不是改配置。
 
 ```yaml
 # application.yml —— 仅在首次启动时播种进 DB
-oryxos:
+aegisos:
   providers:
     - name: deepseek
       api-key: ${DEEPSEEK_API_KEY}       # 环境变量占位符，不明文写死
@@ -34,7 +34,7 @@ oryxos:
     - name: mock                          # 内置假模型，无需 key/url
 ```
 
-API key 来自配置里的环境变量占位符（`${...}`）——不得明文写死。注意 Spring 对列表型配置是**整体替换**而非合并，所以外部覆盖 `oryxos.providers` 会替换掉整个列表。
+API key 来自配置里的环境变量占位符（`${...}`）——不得明文写死。注意 Spring 对列表型配置是**整体替换**而非合并，所以外部覆盖 `aegisos.providers` 会替换掉整个列表。
 
 ## 通过 REST 管理 Provider
 
@@ -55,14 +55,14 @@ API key 来自配置里的环境变量占位符（`${...}`）——不得明文�
 每个 Agent 的 `AGENT.md` frontmatter 按名称声明恰好一个 Provider。当 `ReActLoop` 需要调用 LLM 时，`ProviderService` **按名称在注册表里查找**该 Provider 并解析出它的 `ChatModel`。
 
 ```yaml
-# .oryxos/agents/ops-agent/AGENT.md（frontmatter）
+# .aegisos/agents/ops-agent/AGENT.md（frontmatter）
 provider:
   name: deepseek          # 与某条 Provider 记录的 name 对应
   model: deepseek-chat
   temperature: 0.7
 ```
 
-一个 OryxOS 实例可以同时运行使用不同 Provider 的 Agent。一个 Agent 用 `deepseek`，另一个用 `anthropic`——Agent 的 frontmatter 就是路由表条目。
+一个 AegisOS 实例可以同时运行使用不同 Provider 的 Agent。一个 Agent 用 `deepseek`，另一个用 `anthropic`——Agent 的 frontmatter 就是路由表条目。
 
 ### 动态解析与缓存
 

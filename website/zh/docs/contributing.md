@@ -2,7 +2,7 @@
 
 > 欢迎你。是的，说的就是你。
 
-OryxOS 是**我们的**项目，刚刚起步。没有那么多规矩，也不需要你先成为专家。这里最看重的只有一件事——**你愿意动起来**。只要你愿意提一个 PR、评审一段代码、修一个错别字，你就已经是这个项目的贡献者了。
+AegisOS 是**我们的**项目，刚刚起步。没有那么多规矩，也不需要你先成为专家。这里最看重的只有一件事——**你愿意动起来**。只要你愿意提一个 PR、评审一段代码、修一个错别字，你就已经是这个项目的贡献者了。
 
 我们希望通过这个项目一起做到三件事：
 
@@ -23,11 +23,11 @@ OryxOS 是**我们的**项目，刚刚起步。没有那么多规矩，也不需
 - **Issue**——报一个 bug、提一个想法、参与讨论。哪怕只是"这里我没看懂"，也是有价值的反馈。
 - **评审（Review）**——去别人的 PR 下面看一看、提提意见、点个 LGTM。这是成为 maintainer 的第一步。
 
-> 第一次不知道从哪下手？去 [Issues](https://github.com/oryx-labs/oryxos/issues) 找带 `good first issue` 标签的，或者直接开一个 issue 说"我想帮忙，从哪开始"。
+> 第一次不知道从哪下手？去 [Issues](https://github.com/aegis-labs/aegisos/issues) 找带 `good first issue` 标签的，或者直接开一个 issue 说"我想帮忙，从哪开始"。
 
 ## 用 AI 来做——但为结果负责
 
-**欢迎、甚至非常建议你全程用 AI 完成贡献。** 写代码、写文档、写测试、debug、理解一段陌生的模块——尽管用 Claude Code、Copilot、Cursor 或任何你顺手的工具。OryxOS 本身就是一个"和 AI 一起把事做成"的项目，帮你走进 AI 编程正是我们的目的之一。
+**欢迎、甚至非常建议你全程用 AI 完成贡献。** 写代码、写文档、写测试、debug、理解一段陌生的模块——尽管用 Claude Code、Copilot、Cursor 或任何你顺手的工具。AegisOS 本身就是一个"和 AI 一起把事做成"的项目，帮你走进 AI 编程正是我们的目的之一。
 
 但有一条底线，和 Linus 对 AI 的看法一样：
 
@@ -43,22 +43,22 @@ OryxOS 是**我们的**项目，刚刚起步。没有那么多规矩，也不需
 
 ## 开发环境准备
 
-OryxOS 是 Java 21 + Spring Boot 的 Maven 多模块项目，前端管理台是 Vue。你需要：
+AegisOS 是 Java 21 + Spring Boot 的 Maven 多模块项目，前端管理台是 Vue。你需要：
 
 - **JDK 21+**（必须——虚拟线程是运行时核心）
 - **Maven 3.9+**
-- **Node.js 18+**（仅当你要改 `oryxos-web` 的前端管理台时）
+- **Node.js 18+**（仅当你要改 `aegisos-web` 的前端管理台时）
 
 ```bash
 # 克隆你 fork 后的仓库
-git clone https://github.com/<你的用户名>/oryxos.git
-cd oryxos
+git clone https://github.com/<你的用户名>/aegisos.git
+cd aegisos
 
 # 构建 + 跑全部质量门禁和测试
 mvn clean verify
 
 # 本地起服务（先按快速开始配好 Provider）
-java -jar oryxos-boot/target/oryxos-boot-*.jar serve
+java -jar aegisos-boot/target/aegisos-boot-*.jar serve
 ```
 
 更详细的构建与配置见[快速开始](./quick-start)。
@@ -100,7 +100,7 @@ chore: 升级版本到 0.1.1
 
 ## 质量门禁（务必看）
 
-OryxOS 用 `mvn verify` 把关，本地过了才提，不要把红灯留给 CI 和 reviewer：
+AegisOS 用 `mvn verify` 把关，本地过了才提，不要把红灯留给 CI 和 reviewer：
 
 - **Spotless**（google-java-format）——格式。没过就跑 `mvn spotless:apply` 自动修。
 - **P3C / PMD**——阿里巴巴 Java 规约，比如字符串字面量要抽成常量。
@@ -108,7 +108,7 @@ OryxOS 用 `mvn verify` 把关，本地过了才提，不要把红灯留给 CI �
 - **SpotBugs + FindSecBugs**——潜在 bug 和安全问题。
 - **单元测试**——JUnit，新功能请带上测试。
 
-另外，OryxOS 有几条**架构宪法**（自实现 ReAct Loop、Spring AI 只做协议转换 + `@Tool` schema、Provider 显式映射、审计表第一天就写入、沙箱白名单、同步 + 虚拟线程……）。改到核心时请对照 `CLAUDE.md` 里的宪法条款；拿不准就在 issue / PR 里问，别一个人闷头猜。
+另外，AegisOS 有几条**架构宪法**（自实现 ReAct Loop、Spring AI 只做协议转换 + `@Tool` schema、Provider 显式映射、审计表第一天就写入、沙箱白名单、同步 + 虚拟线程……）。改到核心时请对照 `CLAUDE.md` 里的宪法条款；拿不准就在 issue / PR 里问，别一个人闷头猜。
 
 ## 行为准则
 
@@ -122,7 +122,7 @@ OryxOS 用 `mvn verify` 把关，本地过了才提，不要把红灯留给 CI �
 
 ## 找我们
 
-- **Issues**：报 bug、提想法 → [github.com/oryx-labs/oryxos/issues](https://github.com/oryx-labs/oryxos/issues)
-- **Pull Requests**：开始贡献 → [github.com/oryx-labs/oryxos/pulls](https://github.com/oryx-labs/oryxos/pulls)
+- **Issues**：报 bug、提想法 → [github.com/aegis-labs/aegisos/issues](https://github.com/aegis-labs/aegisos/issues)
+- **Pull Requests**：开始贡献 → [github.com/aegis-labs/aegisos/pulls](https://github.com/aegis-labs/aegisos/pulls)
 
 想更进一步、成为 maintainer？看[Maintainer 指南](./maintainer)。第一次用 GitHub 协作？看[GitHub 贡献入门](./github-workflow)。

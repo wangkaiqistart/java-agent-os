@@ -1,6 +1,6 @@
 # ReAct Loop
 
-OryxOS 从零实现了 ReAct（Reason + Act）算法——`ReActLoop.java` 里数十行 Java 代码，没有框架委托，没有黑盒 Agent 抽象。每次迭代都是透明的、可审计的。
+AegisOS 从零实现了 ReAct（Reason + Act）算法——`ReActLoop.java` 里数十行 Java 代码，没有框架委托，没有黑盒 Agent 抽象。每次迭代都是透明的、可审计的。
 
 ![ReAct Loop](/images/react-loop.svg)
 
@@ -37,7 +37,7 @@ OryxOS 从零实现了 ReAct（Reason + Act）算法——`ReActLoop.java` 里�
 | # | 部分 | 来源 | 负责方 |
 | --- | --- | --- | --- |
 | 1 | 系统提示词 — 该 Agent 的 `AGENT.md` 正文 + Bootstrap 文件（`AGENTS.md`、`SOUL.md`、`USER.md`） | 文件系统 | `ContextLoader` |
-| 2 | 长期记忆 — 该 Agent 的 `MEMORY.md` 全文（截断至 4000 字符） | `.oryxos/agents/<name>/MEMORY.md`（回退到 `.oryxos/memory/MEMORY.md`） | `MemoryService` |
+| 2 | 长期记忆 — 该 Agent 的 `MEMORY.md` 全文（截断至 4000 字符） | `.aegisos/agents/<name>/MEMORY.md`（回退到 `.aegisos/memory/MEMORY.md`） | `MemoryService` |
 | 3 | 对话历史 — 最近 `max_history_turns` 轮，以结构化消息形式（包含此前 assistant 的工具调用和带 id 的工具结果） | SQLite `sessions.messages_json` | `SessionManager` |
 | 4 | 可用工具 — 该 Agent 暴露的每个工具的 JSON Schema | `ToolRegistry` | `ToolRegistry` |
 
@@ -50,7 +50,7 @@ Prompt 在每次迭代时重新构建。工具调用和结果以结构化的 `to
 `ToolExecutor` 负责从 LLM 决定调用工具到结果加入对话历史之间发生的一切：
 
 1. **解析** — 从模型响应中提取工具名称和参数
-2. **查找** — 在 `ToolRegistry` 中找到对应的 `OryxTool` 实现
+2. **查找** — 在 `ToolRegistry` 中找到对应的 `AegisTool` 实现
 3. **校验** — `SandboxChecker` 对照配置的白名单验证调用
 4. **执行** — 内置工具在进程内执行；MCP 工具通过 JSON-RPC 转发
 5. **审计** — 向 `tool_invocations` 写入一条记录（成功与否、耗时、输入、结果）

@@ -1,16 +1,16 @@
 # Architecture
 
-OryxOS is a Spring Boot 3.x single-binary application running on JDK 21. The entire system — LLM routing, reasoning loop, memory, tools, REST API, and the web admin console — ships as one fat JAR. No external dependencies are required beyond a JVM and the LLM provider credentials you configure. State is stored in SQLite and on the local filesystem under the workspace directory (`.oryxos/` by default, configurable — see below).
+AegisOS is a Spring Boot 3.x single-binary application running on JDK 21. The entire system — LLM routing, reasoning loop, memory, tools, REST API, and the web admin console — ships as one fat JAR. No external dependencies are required beyond a JVM and the LLM provider credentials you configure. State is stored in SQLite and on the local filesystem under the workspace directory (`.aegisos/` by default, configurable — see below).
 
-The reasoning engine is a self-implemented ReAct loop. Spring AI's OpenAI connector handles OpenAI-compatible LLM protocol translation; OryxOS owns the loop, the context assembly, the tool dispatch, and the audit records.
+The reasoning engine is a self-implemented ReAct loop. Spring AI's OpenAI connector handles OpenAI-compatible LLM protocol translation; AegisOS owns the loop, the context assembly, the tool dispatch, and the audit records.
 
 ## Architecture Diagram
 
-![OryxOS Architecture](/images/architecture.svg)
+![AegisOS Architecture](/images/architecture.svg)
 
 ## Layer Diagram
 
-![OryxOS Layer Diagram](/images/layer-diagram.svg)
+![AegisOS Layer Diagram](/images/layer-diagram.svg)
 
 **Channel Layer** — the entry points. CLI handles interactive use and local debugging. The REST API handles business system integration and backs the web admin console. Both funnel into the same engine.
 
@@ -22,33 +22,33 @@ The reasoning engine is a self-implemented ReAct loop. Spring AI's OpenAI connec
 
 ## One Directory = One Agent
 
-Every Agent is a single directory: `.oryxos/agents/<name>/`. There is no separate `.oryxos/profiles/` — the Profile *is* the agent.
+Every Agent is a single directory: `.aegisos/agents/<name>/`. There is no separate `.aegisos/profiles/` — the Profile *is* the agent.
 
 - `AGENT.md` = YAML frontmatter (the Agent's Profile: `name`, `description`, `identity`, `provider`/`model`, `tools`, `mcp_servers`, `channels`, `bootstrap`, `settings`, `schedules`) + a body of task instructions injected into the system prompt. `AgentLoader.deriveProfile(agentDir)` turns the frontmatter into the `Profile` the runtime understands.
 - Optional `skills/*.md` sub-instructions, `scripts/`, and `REFERENCE.md` sit in the same directory and are loaded **on demand** through the ordinary `read_file` / `shell` tools — no global skill index, no `use_skill`.
-- Long-term memory is **per-agent**: `.oryxos/agents/<name>/MEMORY.md` (falling back to the global `.oryxos/memory/MEMORY.md` when there is no agent context). Memory lines are timestamped, and every trigger of an agent is auto-recorded to that agent's archival memory.
+- Long-term memory is **per-agent**: `.aegisos/agents/<name>/MEMORY.md` (falling back to the global `.aegisos/memory/MEMORY.md` when there is no agent context). Memory lines are timestamped, and every trigger of an agent is auto-recorded to that agent's archival memory.
 
 ## Dynamic Agent Lifecycle
 
 Agents can be created, updated, and removed at runtime — no restart required.
 
-- **CRUD via REST** — `POST /api/v1/agents` writes `.oryxos/agents/<name>/AGENT.md`, derives the Profile, and registers the agent (rolling back on failure); `PUT` updates it (a schedule change unregisters then re-registers); `DELETE` performs a soft delete: unschedule → remove from registry → archive the directory (never a physical delete).
-- **Drop-in via WorkspaceWatcher** — a JDK `WatchService`-based watcher observes `.oryxos/agents/`. Dropping a directory in makes the agent live immediately; the same watcher keeps the registry in sync with on-disk edits.
+- **CRUD via REST** — `POST /api/v1/agents` writes `.aegisos/agents/<name>/AGENT.md`, derives the Profile, and registers the agent (rolling back on failure); `PUT` updates it (a schedule change unregisters then re-registers); `DELETE` performs a soft delete: unschedule → remove from registry → archive the directory (never a physical delete).
+- **Drop-in via WorkspaceWatcher** — a JDK `WatchService`-based watcher observes `.aegisos/agents/`. Dropping a directory in makes the agent live immediately; the same watcher keeps the registry in sync with on-disk edits.
 - **One-sentence generation** — `POST /api/v1/agents/{name}/generate-files` turns a single sentence into a draft `AGENT.md` via the LLM. The draft is **preview only** — it is neither saved nor registered until the user confirms and saves it (`POST /api/v1/agents/{name}/files`).
 
 ## Dynamic Provider & Notify-Channel Registries
 
 Providers and notify channels are no longer static config — both are stored in SQLite and managed through CRUD endpoints.
 
-- **Providers** (`providers` table) — `ProviderApiController` exposes create/list/get/update/delete. At runtime the engine resolves the `ChatModel` dynamically by provider name; models are built and cached by `(name | apiKey | baseUrl)`, so editing a key or base URL rebuilds the model on the next call. The `oryxos.providers[]` config is *seeded* into the table on first startup, after which the database is authoritative. Constitution principle III (an explicit `provider name → ChatModel` map) is preserved — the map is simply runtime-mutable. The `mock` provider is a built-in fake model needing no key or URL.
+- **Providers** (`providers` table) — `ProviderApiController` exposes create/list/get/update/delete. At runtime the engine resolves the `ChatModel` dynamically by provider name; models are built and cached by `(name | apiKey | baseUrl)`, so editing a key or base URL rebuilds the model on the next call. The `aegisos.providers[]` config is *seeded* into the table on first startup, after which the database is authoritative. Constitution principle III (an explicit `provider name → ChatModel` map) is preserved — the map is simply runtime-mutable. The `mock` provider is a built-in fake model needing no key or URL.
 - **Notify channels** (`notify_channels` table) — `NotifyChannelApiController` exposes the same CRUD. A channel has a `type` (`feishu` | `wecom` | `dingtalk` | `webhook`) and a URL. The `notify` tool references a channel **by name** (in the `AGENT.md` body, e.g. "notify team-lark"); the tool resolves the registered channel to its adapter and URL. There is no `notify_channels` field in the frontmatter.
 
 ## Configurable Workspace Root
 
-The workspace directory defaults to `.oryxos` but is configurable:
+The workspace directory defaults to `.aegisos` but is configurable:
 
-- `oryxos.root` in `application.yml` — affects the Spring-booted commands (`serve` / `gateway`).
-- `ORYXOS_ROOT` env var or `-Doryxos.root=` — affects the zero-Spring light CLI commands (`init` / `status` / `profile`) and, through Spring relaxed binding, the booted commands too.
+- `aegisos.root` in `application.yml` — affects the Spring-booted commands (`serve` / `gateway`).
+- `AEGISOS_ROOT` env var or `-Daegisos.root=` — affects the zero-Spring light CLI commands (`init` / `status` / `profile`) and, through Spring relaxed binding, the booted commands too.
 
 The configured root is auto-added to the file sandbox whitelist at runtime, so changing the root never breaks the file tools.
 
@@ -87,17 +87,22 @@ A Vue 3 + Vite single-page app is served at `/admin/`, styled to match the marke
 
 | Module | Responsibility |
 | --- | --- |
-| `oryxos-core` | Core abstractions and interfaces: `OryxTool`, `Session`, `Profile`, `ContextLoader`, `ReActLoop`, `PromptBuilder`, `ToolExecutor`, `AgentService`, `AgentLoader` |
-| `oryxos-provider` | LLM routing: `ProviderService`, Function Calling format adaptation, dynamic `provider name → ChatModel` resolution backed by the provider registry |
-| `oryxos-memory` | Memory: `MemoryService` facade, `LongTermMemory` (reads/writes per-agent `MEMORY.md`), `MemoryTools` (`save_memory`, `recall_memory`) |
-| `oryxos-tool` | Tool system: built-in tools (`FileTools`, `ShellTools`, `HttpTools`, `NotifyTools`), `McpClientService`, `McpToolAdapter`, `ToolRegistry`, `SandboxChecker` |
-| `oryxos-channel-cli` | CLI channel: `CliChannel`, `oryxos chat` command implementation |
-| `oryxos-web` | REST API: ten `ApiController` classes, `GlobalExceptionHandler`, the unified response envelope, OpenAPI spec, and the Vue admin console served at `/admin/` |
-| `oryxos-storage` | Persistence: SQLite via Spring Data JPA — session, tool-invocation, LLM-call, scheduled-task, task-execution, memory-entry, notify-channel, and provider repositories |
-| `oryxos-cli` | CLI entry point: Picocli main, 12 subcommands, `ConfigLoader` for credentials and config validation |
-| `oryxos-boot` | Spring Boot bootstrap: main class, auto-configuration, dependency aggregation |
+| `aegisos-core` | Core abstractions and runtime: `AegisTool`, `Session`, `Profile`, `ContextLoader`, `AgentLoader`, `ReActLoop`, `PromptBuilder`, `ToolExecutor`, `AgentService`, `AgentScheduler` |
+| `aegisos-persona` | Built-in persona presets and custom persona storage/service |
+| `aegisos-provider` | LLM routing: `ProviderService`, Function Calling adaptation, explicit provider-to-`ChatModel` mapping |
+| `aegisos-memory` | Memory facade and pluggable long-term backends (`MarkdownMemoryStore`, `SqliteMemoryStore`, `Mem0MemoryStore`) plus `save_memory` / `recall_memory` |
+| `aegisos-knowledge` | Knowledge parsing, indexing, retrieval pipeline, pluggable chunk storage, and knowledge tools |
+| `aegisos-tool` | Nine built-in tools, MCP client/adapter, `ToolRegistry`, and sandbox implementations |
+| `aegisos-channel-cli` | CLI channel and `aegisos chat` implementation |
+| `aegisos-channel-feishu` | Feishu inbound/outbound channel adapter |
+| `aegisos-channel-wecom` | WeCom inbound/outbound channel adapter |
+| `aegisos-channel-dingtalk` | DingTalk inbound/outbound channel adapter |
+| `aegisos-web` | REST API, exception handling, OpenAPI, and the Vue admin console |
+| `aegisos-storage` | SQLite persistence for sessions, audit records, schedules, memory, notifications, and providers |
+| `aegisos-cli` | Picocli entry point and configuration loading |
+| `aegisos-boot` | Spring Boot bootstrap, auto-configuration, and dependency aggregation |
 
-Modules communicate through interfaces. Adding a new Channel or Tool implementation means adding a new module — `oryxos-core` is not touched.
+Modules communicate through interfaces. Adding a new Channel or Tool implementation means adding a new module — `aegisos-core` is not touched.
 
 ## Key Technical Decisions
 
@@ -109,7 +114,7 @@ Modules communicate through interfaces. Adding a new Channel or Tool implementat
 | 4 | Provider resolution | Dynamic `provider name → ChatModel` map backed by a SQLite registry, cached by `(name\|apiKey\|baseUrl)` | Explicit mapping (never Bean-type scanning) but runtime-mutable, so providers can be added or edited without a restart |
 | 5 | HTTP service layer | Spring MVC + Java 21 virtual threads | Sync-style code, thousands of concurrent requests per node; `SseEmitter` available for streaming in extension phase |
 | 6 | Sandbox strategy | Path/pattern whitelists at the application layer, runtime-manageable | `SecurityManager` is deprecated since JDK 17 and unavailable on JDK 21; full container-level sandbox is extension-phase work |
-| 7 | Persistence | SQLite + Spring Data JPA for relational data; per-agent `MEMORY.md` for long-term memory | Single binary, no external database process required; audit tables written from day one so auditability is never retrofitted |
+| 7 | Persistence | SQLite + Spring Data JPA for relational data; pluggable long-term memory (`MarkdownMemoryStore` default, SQLite, Mem0) | Single binary by default; audit tables written from day one so auditability is never retrofitted |
 
 ## Tech Stack
 
@@ -123,7 +128,7 @@ Modules communicate through interfaces. Adding a new Channel or Tool implementat
 | CLI | Picocli |
 | YAML parsing | SnakeYAML |
 | Persistence | SQLite + Spring Data JPA (`schema.sql` maintained by hand; `CREATE TABLE IF NOT EXISTS`, no fragile SQLite `ALTER`) |
-| Long-term memory | per-agent `MEMORY.md` flat file, keyword search; vector retrieval planned for extension phase |
+| Long-term memory | `MarkdownMemoryStore` (`MEMORY.md`) by default, with SQLite/Mem0 backends; vector retrieval planned for extension phase |
 | MCP integration | MCP Java SDK (MCP Client for connecting to external MCP servers) |
 | Logging | Logback + SLF4J, structured JSON output |
 | Build | Maven multi-module |

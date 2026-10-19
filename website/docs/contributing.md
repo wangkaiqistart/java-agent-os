@@ -2,7 +2,7 @@
 
 > Welcome. Yes, you.
 
-OryxOS is **our** project, and it's just getting started. There aren't many rules here, and you don't need to be an expert first. There's really only one thing that matters: **you're willing to get moving.** The moment you open a PR, review a diff, or fix a typo, you're already a contributor.
+AegisOS is **our** project, and it's just getting started. There aren't many rules here, and you don't need to be an expert first. There's really only one thing that matters: **you're willing to get moving.** The moment you open a PR, review a diff, or fix a typo, you're already a contributor.
 
 We want to do three things together through this project:
 
@@ -23,11 +23,11 @@ Writing core code isn't the only kind of contribution. All of these are equally 
 - **Issues** — report a bug, propose an idea, join a discussion. Even "I didn't understand this part" is valuable feedback.
 - **Reviews** — go look at someone else's PR, leave a comment, drop an LGTM. This is the first step toward becoming a maintainer.
 
-> Not sure where to start? Look for issues labeled `good first issue` in [Issues](https://github.com/oryx-labs/oryxos/issues), or just open an issue saying "I'd like to help — where do I start?"
+> Not sure where to start? Look for issues labeled `good first issue` in [Issues](https://github.com/aegis-labs/aegisos/issues), or just open an issue saying "I'd like to help — where do I start?"
 
 ## Use AI — but own the result
 
-**You're welcome, and in fact strongly encouraged, to use AI throughout your contribution.** Writing code, docs, tests, debugging, understanding an unfamiliar module — go ahead and use Claude Code, Copilot, Cursor, or whatever fits your hand. OryxOS is itself a "get things done together with AI" project, and helping you step into AI programming is one of our goals.
+**You're welcome, and in fact strongly encouraged, to use AI throughout your contribution.** Writing code, docs, tests, debugging, understanding an unfamiliar module — go ahead and use Claude Code, Copilot, Cursor, or whatever fits your hand. AegisOS is itself a "get things done together with AI" project, and helping you step into AI programming is one of our goals.
 
 But there's one line, and it's the same as Linus's view on AI:
 
@@ -43,22 +43,22 @@ In short: **AI makes you faster and stronger, but the name and the responsibilit
 
 ## Setting up
 
-OryxOS is a Java 21 + Spring Boot Maven multi-module project; the admin console frontend is Vue. You'll need:
+AegisOS is a Java 21 + Spring Boot Maven multi-module project; the admin console frontend is Vue. You'll need:
 
 - **JDK 21+** (required — virtual threads are core to the runtime)
 - **Maven 3.9+**
-- **Node.js 18+** (only if you're touching the `oryxos-web` admin console frontend)
+- **Node.js 18+** (only if you're touching the `aegisos-web` admin console frontend)
 
 ```bash
 # clone your fork
-git clone https://github.com/<your-username>/oryxos.git
-cd oryxos
+git clone https://github.com/<your-username>/aegisos.git
+cd aegisos
 
 # build + run all quality gates and tests
 mvn clean verify
 
 # run locally (configure a Provider first, per Quick Start)
-java -jar oryxos-boot/target/oryxos-boot-*.jar serve
+java -jar aegisos-boot/target/aegisos-boot-*.jar serve
 ```
 
 See [Quick Start](./quick-start) for full build and configuration details.
@@ -100,7 +100,7 @@ Common types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`.
 
 ## Quality gates (please read)
 
-OryxOS gates on `mvn verify`. Pass it locally before you push — don't leave red lights for CI and reviewers:
+AegisOS gates on `mvn verify`. Pass it locally before you push — don't leave red lights for CI and reviewers:
 
 - **Spotless** (google-java-format) — formatting. Failing? Run `mvn spotless:apply` to auto-fix.
 - **P3C / PMD** — Alibaba Java coding rules (e.g. string literals must be extracted to constants).
@@ -108,7 +108,7 @@ OryxOS gates on `mvn verify`. Pass it locally before you push — don't leave re
 - **SpotBugs + FindSecBugs** — potential bugs and security issues.
 - **Unit tests** — JUnit; please ship tests with new features.
 
-OryxOS also has a few **architectural principles** (self-implemented ReAct loop; Spring AI only for protocol conversion + `@Tool` schema; explicit Provider mapping; audit tables written from day one; sandbox whitelists; synchronous + virtual threads…). When touching the core, check the constitution in `CLAUDE.md`; if unsure, ask in an issue/PR rather than guessing alone.
+AegisOS also has a few **architectural principles** (self-implemented ReAct loop; Spring AI only for protocol conversion + `@Tool` schema; explicit Provider mapping; audit tables written from day one; sandbox whitelists; synchronous + virtual threads…). When touching the core, check the constitution in `CLAUDE.md`; if unsure, ask in an issue/PR rather than guessing alone.
 
 ## Code of conduct
 
@@ -122,7 +122,7 @@ We're just starting out. The thing we fear most isn't code that isn't good enoug
 
 ## Reach us
 
-- **Issues**: report bugs, propose ideas → [github.com/oryx-labs/oryxos/issues](https://github.com/oryx-labs/oryxos/issues)
-- **Pull Requests**: start contributing → [github.com/oryx-labs/oryxos/pulls](https://github.com/oryx-labs/oryxos/pulls)
+- **Issues**: report bugs, propose ideas → [github.com/aegis-labs/aegisos/issues](https://github.com/aegis-labs/aegisos/issues)
+- **Pull Requests**: start contributing → [github.com/aegis-labs/aegisos/pulls](https://github.com/aegis-labs/aegisos/pulls)
 
 Want to go further and become a maintainer? See the [Maintainer Guide](./maintainer). First time collaborating on GitHub? See [GitHub Contribution Basics](./github-workflow).

@@ -1,11 +1,11 @@
 # Profile 配置（AGENT.md frontmatter）
 
-在 OryxOS 里，**一个目录 = 一个 Agent**。一个 Agent 就是 `.oryxos/agents/<name>/` 目录下由 `AGENT.md` 定义的实体。该文件由两部分组成：
+在 AegisOS 里，**一个目录 = 一个 Agent**。一个 Agent 就是 `.aegisos/agents/<name>/` 目录下由 `AGENT.md` 定义的实体。该文件由两部分组成：
 
 - **YAML frontmatter** —— 这个 Agent 的 *Profile*：它是谁、用哪个 Provider/模型、能调哪些工具、有哪些定时任务、以及对话行为上限。
 - **Markdown 正文** —— 这个 Agent 的任务指令，注入 system prompt。
 
-**不再有 `.oryxos/profiles/` 目录**。Profile 就是 frontmatter，不是单独的文件。可选的 `skills/*.md`、`scripts/`、`REFERENCE.md` 放在同一目录，由正文用 `read_file` / `shell` 按需加载——它们**不在** frontmatter 里声明。
+**不再有 `.aegisos/profiles/` 目录**。Profile 就是 frontmatter，不是单独的文件。可选的 `skills/*.md`、`scripts/`、`REFERENCE.md` 放在同一目录，由正文用 `read_file` / `shell` 按需加载——它们**不在** frontmatter 里声明。
 
 Agent 可以通过 `/api/v1/agents` 接口和 Web 管理台**动态**创建与编辑——在线写入/修改 `AGENT.md` 并重新注册，无需重启。
 
@@ -13,7 +13,7 @@ Agent 可以通过 `/api/v1/agents` 接口和 Web 管理台**动态**创建与�
 
 ## 完整示例
 
-`.oryxos/agents/ops-agent/AGENT.md`：
+`.aegisos/agents/ops-agent/AGENT.md`：
 
 ```markdown
 ---
@@ -78,7 +78,7 @@ settings:
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `name` | string | 是 | Agent 唯一标识，与目录名一致，用于 CLI（`--profile <name>`）和 API 路径（`/api/v1/agents/{name}`） |
-| `description` | string | 否 | 人类可读的描述，展示在管理台和 `oryxos profile list` |
+| `description` | string | 否 | 人类可读的描述，展示在管理台和 `aegisos profile list` |
 | `identity` | object | 是 | Agent 的名字和核心 prompt，见 [Identity](#identity) |
 | `provider` | object | 是 | LLM Provider 和模型选择，见 [Provider](#provider) |
 | `tools` | list | 否 | 该 Agent 可用的工具名列表，必须已在 `ToolRegistry` 注册，默认无工具 |
@@ -108,13 +108,13 @@ settings:
 
 ## Provider 配置
 
-`provider.name` 按名引用一个 Provider。OryxOS 维护显式的 `name → ChatModel` 映射（宪法三——绝不靠 Spring Bean 类型扫描），但该映射是**运行时可变**的：Provider 存于 SQLite 的 `providers` 表，按名动态解析。
+`provider.name` 按名引用一个 Provider。AegisOS 维护显式的 `name → ChatModel` 映射（宪法三——绝不靠 Spring Bean 类型扫描），但该映射是**运行时可变**的：Provider 存于 SQLite 的 `providers` 表，按名动态解析。
 
-启动时从 `config/application.yml`（`oryxos.providers` 列表）播种 Provider，之后通过管理台或 `/api/v1/providers` 接口动态管理：
+启动时从 `config/application.yml`（`aegisos.providers` 列表）播种 Provider，之后通过管理台或 `/api/v1/providers` 接口动态管理：
 
 ```yaml
 # config/application.yml
-oryxos:
+aegisos:
   providers:
     - name: deepseek
       api-key: ${DEEPSEEK_API_KEY}
@@ -154,14 +154,14 @@ export DEEPSEEK_API_KEY=sk-...
 
 > 飞书 / 企微 / 钉钉入站绑定的 Agent 若要「搜一下 / 查最新」，必须在 `tools:` 中加入 `web_search`（建议同时加 `http_get`、`fetch_webpage`）。仅渠道 `CONNECTED` 不够——未列入的工具不会出现在模型侧。详见 [Tool 体系](/zh/docs/tool)（「给 IM / 业务 Agent 开联网检索」一节）。
 
-来自 `mcp_servers` 的 MCP 工具以 server 声明的名称暴露（如 `github_create_pr`）。运行 `oryxos tool list` 查看所有已注册名称。详见 [Tool 体系](/zh/docs/tool)，包括 `notify` 如何按名解析渠道。
+来自 `mcp_servers` 的 MCP 工具以 server 声明的名称暴露（如 `github_create_pr`）。运行 `aegisos tool list` 查看所有已注册名称。详见 [Tool 体系](/zh/docs/tool)，包括 `notify` 如何按名解析渠道。
 
 ### 子指令与脚本（无 frontmatter 字段）
 
 可复用的指令和辅助脚本放在 **Agent 目录内**，不在 frontmatter 里：
 
 ```text
-.oryxos/agents/ops-agent/
+.aegisos/agents/ops-agent/
 ├── AGENT.md            # frontmatter（Profile）+ 正文（任务指令）
 ├── skills/
 │   └── deploy-runbook.md
@@ -184,13 +184,13 @@ Bootstrap 文件按列出的顺序注入 system prompt，提供跨所有 Agent �
 | `SOUL.md` | 项目维护者 | Agent 人格定义：语气、风格、价值观 |
 | `USER.md` | 仅用户手写 | 用户偏好与背景：Agent 只读，绝不写入 |
 
-从 OryxOS 视角，`USER.md` 严格只读。可被 Agent 写入的对应文件是 `MEMORY.md`，通过 `save_memory` 工具更新。与该 Agent 无关的文件可从列表中省略。
+从 AegisOS 视角，`USER.md` 严格只读。可被 Agent 写入的对应文件是 `MEMORY.md`，通过 `save_memory` 工具更新。与该 Agent 无关的文件可从列表中省略。
 
 ---
 
 ## Schedules
 
-`schedules` 声明该 Agent 的定时触发任务。每条必须定义 Agent 内的 `key` 与展示 `name`；OryxOS 会为运行态生成稳定且全局唯一的 `scheduleId`。列表、立即运行、历史和启停请使用 `/api/v2/schedules` 与管理台。
+`schedules` 声明该 Agent 的定时触发任务。每条必须定义 Agent 内的 `key` 与展示 `name`；AegisOS 会为运行态生成稳定且全局唯一的 `scheduleId`。列表、立即运行、历史和启停请使用 `/api/v2/schedules` 与管理台。
 
 ```yaml
 schedules:

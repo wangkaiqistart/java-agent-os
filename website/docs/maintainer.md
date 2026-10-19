@@ -2,7 +2,7 @@
 
 > Becoming a maintainer isn't an exam. It's a beginning.
 
-A lot of projects make "maintainer" sound mysterious — as if you need to have written tens of thousands of lines and put in years before you qualify. **OryxOS is not like that.** We're just starting out, and we need people to help hold it up. The bar here is one sentence:
+A lot of projects make "maintainer" sound mysterious — as if you need to have written tens of thousands of lines and put in years before you qualify. **AegisOS is not like that.** We're just starting out, and we need people to help hold it up. The bar here is one sentence:
 
 > **If you want to get moving, you can become a committer.**
 

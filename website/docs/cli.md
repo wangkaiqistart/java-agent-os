@@ -1,9 +1,9 @@
 # CLI Reference
 
-The `oryxos` command provides sub-commands for workspace management, profile operations, interactive chat, and server control. All commands are implemented with Picocli and run on Java 21.
+The `aegisos` command provides sub-commands for workspace management, profile operations, interactive chat, and server control. All commands are implemented with Picocli and run on Java 21.
 
 ```bash
-oryxos <command> [options]
+aegisos <command> [options]
 ```
 
 **Global flags** (accepted by all commands):
@@ -17,20 +17,20 @@ oryxos <command> [options]
 
 ## Workspace root
 
-By default OryxOS reads and writes the `.oryxos` workspace in the current directory. The root is configurable:
+By default AegisOS reads and writes the `.aegisos` workspace in the current directory. The root is configurable:
 
 | Mechanism | Applies to | Notes |
 |-----------|-----------|-------|
-| `ORYXOS_ROOT` (env var) | all commands | Light commands read it directly; `serve`/`gateway` pick it up through Spring relaxed binding |
-| `-Doryxos.root=<path>` (JVM system property) | all commands | Highest precedence for light commands |
-| `oryxos.root` in `application.yml` | `serve` / `gateway` only | Not read by the light commands (`init`/`status`/`profile`) — they never boot Spring, so use the env var or system property for them |
+| `AEGISOS_ROOT` (env var) | all commands | Light commands read it directly; `serve`/`gateway` pick it up through Spring relaxed binding |
+| `-Daegisos.root=<path>` (JVM system property) | all commands | Highest precedence for light commands |
+| `aegisos.root` in `application.yml` | `serve` / `gateway` only | Not read by the light commands (`init`/`status`/`profile`) — they never boot Spring, so use the env var or system property for them |
 
-Resolution order for the light commands is: `-Doryxos.root` → `ORYXOS_ROOT` → default `.oryxos`. The configured root is auto-added to the file sandbox whitelist at runtime, so relocating the workspace never breaks file tools.
+Resolution order for the light commands is: `-Daegisos.root` → `AEGISOS_ROOT` → default `.aegisos`. The configured root is auto-added to the file sandbox whitelist at runtime, so relocating the workspace never breaks file tools.
 
 ```bash
 # Point every command at a custom workspace
-ORYXOS_ROOT=/data/ws oryxos init
-ORYXOS_ROOT=/data/ws oryxos status
+AEGISOS_ROOT=/data/ws aegisos init
+AEGISOS_ROOT=/data/ws aegisos status
 ```
 
 ---
@@ -39,18 +39,18 @@ ORYXOS_ROOT=/data/ws oryxos status
 
 ### init
 
-Initialize the workspace (default `.oryxos/`) in the current directory. Creates the directory structure and the default bootstrap files. Safe to run multiple times — existing files are never overwritten. This is a light command: it does not boot Spring, and it honors `ORYXOS_ROOT` / `-Doryxos.root`.
+Initialize the workspace (default `.aegisos/`) in the current directory. Creates the directory structure and the default bootstrap files. Safe to run multiple times — existing files are never overwritten. This is a light command: it does not boot Spring, and it honors `AEGISOS_ROOT` / `-Daegisos.root`.
 
 ```bash
-oryxos init
+aegisos init
 # Or into a custom workspace root:
-ORYXOS_ROOT=/data/ws oryxos init
+AEGISOS_ROOT=/data/ws aegisos init
 ```
 
 What gets created:
 
 ```text
-.oryxos/
+.aegisos/
 ├── agents/       # one sub-directory per agent (AGENT.md + optional skills/ scripts/ REFERENCE.md)
 ├── memory/       # global long-term memory (per-agent MEMORY.md lives under agents/<name>/)
 ├── sessions/     # reserved (session state lives in SQLite)
@@ -60,20 +60,20 @@ What gets created:
 └── USER.md       # bootstrap: user preferences (read-only)
 ```
 
-The `oryxos.db` SQLite database is created on first run of a heavy command (`serve`/`gateway`/`chat`), not by `init`.
+The `aegisos.db` SQLite database is created on first run of a heavy command (`serve`/`gateway`/`chat`), not by `init`.
 
 ### status
 
-Print the workspace and data-file state: whether the workspace is initialized, how many agents live under `agents/`, and whether the SQLite database exists. Like `init`, this is a light command — it does not boot Spring and honors `ORYXOS_ROOT` / `-Doryxos.root`.
+Print the workspace and data-file state: whether the workspace is initialized, how many agents live under `agents/`, and whether the SQLite database exists. Like `init`, this is a light command — it does not boot Spring and honors `AEGISOS_ROOT` / `-Daegisos.root`.
 
 ```bash
-oryxos status
+aegisos status
 ```
 
 ```text
-Workspace .oryxos/  : initialized
+Workspace .aegisos/  : initialized
 Agent directory     : 3
-SQLite database     : oryxos.db present
+SQLite database     : aegisos.db present
 ```
 
 ---
@@ -85,7 +85,7 @@ SQLite database     : oryxos.db present
 Start an interactive multi-turn conversation with an agent. Runs a ReAct Loop on each message and prints the final response to the terminal. Type `/quit` or press `Ctrl-D` to end the session.
 
 ```bash
-oryxos chat [--profile <name>]
+aegisos chat [--profile <name>]
 ```
 
 | Flag | Default | Description |
@@ -95,7 +95,7 @@ oryxos chat [--profile <name>]
 Example:
 
 ```bash
-oryxos chat --profile ops-agent
+aegisos chat --profile ops-agent
 ```
 
 ```text
@@ -116,10 +116,10 @@ The session is persisted to SQLite and restored on subsequent `chat` invocations
 
 ### serve
 
-Start the HTTP API server. It exposes the REST API under `/api/v1` and serves the web admin console at `/admin/`. Runs synchronously with Java 21 virtual threads — no separate thread pool tuning required. As a heavy command, `serve` boots Spring and reads its workspace root from `oryxos.root` in `application.yml` (Spring relaxed binding also honors the `ORYXOS_ROOT` env var).
+Start the HTTP API server. It exposes the REST API under `/api/v1` and serves the web admin console at `/admin/`. Runs synchronously with Java 21 virtual threads — no separate thread pool tuning required. As a heavy command, `serve` boots Spring and reads its workspace root from `aegisos.root` in `application.yml` (Spring relaxed binding also honors the `AEGISOS_ROOT` env var).
 
 ```bash
-oryxos serve [--port <port>]
+aegisos serve [--port <port>]
 ```
 
 | Flag | Default | Description |
@@ -127,11 +127,11 @@ oryxos serve [--port <port>]
 | `--port <port>` | `8080` | TCP port to bind |
 
 ```bash
-oryxos serve --port 9090
+aegisos serve --port 9090
 ```
 
 ```text
-OryxOS API server starting...
+AegisOS API server starting...
 Listening on http://0.0.0.0:9090
 Admin console: http://0.0.0.0:9090/admin/
 ```
@@ -140,24 +140,24 @@ Press `Ctrl-C` to stop.
 
 ### gateway
 
-Start OryxOS in daemon mode (full runtime, resident). Intended for production multi-agent deployments; multi-channel mounting is an extension-phase feature. Like `serve`, it boots Spring and reads its workspace root from `oryxos.root` (env `ORYXOS_ROOT` honored via relaxed binding). Press `Ctrl-C` to stop.
+Start AegisOS in daemon mode (full runtime, resident). Intended for production multi-agent deployments; multi-channel mounting is an extension-phase feature. Like `serve`, it boots Spring and reads its workspace root from `aegisos.root` (env `AEGISOS_ROOT` honored via relaxed binding). Press `Ctrl-C` to stop.
 
 ```bash
-oryxos gateway
+aegisos gateway
 ```
 
 ---
 
 ## Agent (profile) management
 
-Each agent is one directory under `<workspace>/agents/<name>/`, holding an `AGENT.md` (YAML frontmatter = the agent's profile: identity, provider, tools, settings; body = task instructions) plus optional `skills/`, `scripts/`, and `REFERENCE.md`. One directory = one agent — there is no `.oryxos/profiles/` directory. The `profile` sub-commands are light (no Spring) and read/write these `AGENT.md` files directly, honoring `ORYXOS_ROOT` / `-Doryxos.root`.
+Each agent is one directory under `<workspace>/agents/<name>/`, holding an `AGENT.md` (YAML frontmatter = the agent's profile: identity, provider, tools, settings; body = task instructions) plus optional `skills/`, `scripts/`, and `REFERENCE.md`. One directory = one agent — there is no `.aegisos/profiles/` directory. The `profile` sub-commands are light (no Spring) and read/write these `AGENT.md` files directly, honoring `AEGISOS_ROOT` / `-Daegisos.root`.
 
 ### profile list
 
 List all agents found under `<workspace>/agents/` (one line per agent directory).
 
 ```bash
-oryxos profile list
+aegisos profile list
 ```
 
 ```text
@@ -171,12 +171,12 @@ reviewer
 Scaffold a new agent directory with a minimal `AGENT.md` template. Existing agents are not overwritten.
 
 ```bash
-oryxos profile create <name>
+aegisos profile create <name>
 ```
 
 ```bash
-oryxos profile create code-reviewer
-# Created .oryxos/agents/code-reviewer/AGENT.md
+aegisos profile create code-reviewer
+# Created .aegisos/agents/code-reviewer/AGENT.md
 ```
 
 ### profile show
@@ -184,11 +184,11 @@ oryxos profile create code-reviewer
 Print the full contents of an agent's `AGENT.md`.
 
 ```bash
-oryxos profile show <name>
+aegisos profile show <name>
 ```
 
 ```bash
-oryxos profile show ops-agent
+aegisos profile show ops-agent
 ```
 
 ### profile delete
@@ -196,7 +196,7 @@ oryxos profile show ops-agent
 Remove an agent's entire directory from the workspace.
 
 ```bash
-oryxos profile delete <name>
+aegisos profile delete <name>
 ```
 
 ---
@@ -205,14 +205,14 @@ oryxos profile delete <name>
 
 ### provider list
 
-List the provider registry this instance actually runs with. The light CLI command queries the same database as the runtime — the `providers` table in `oryxos.db` by default, or the datasource configured in `config/application.yml` — and prints each provider's name, derived default marker, base URL and description. The packaged `application.yml` only seeds providers missing from the database on first startup; after that the database is the single source of truth. Providers added or deleted in the admin console (`/api/v1/providers`) show up here accordingly.
+List the provider registry this instance actually runs with. The light CLI command queries the same database as the runtime — the `providers` table in `aegisos.db` by default, or the datasource configured in `config/application.yml` — and prints each provider's name, derived default marker, base URL and description. The packaged `application.yml` only seeds providers missing from the database on first startup; after that the database is the single source of truth. Providers added or deleted in the admin console (`/api/v1/providers`) show up here accordingly.
 
 ```bash
-oryxos provider list
+aegisos provider list
 ```
 
 ```text
-Provider 注册表（oryxos.db）：
+Provider 注册表（aegisos.db）：
 NAME                 DEFAULT  BASE-URL                                             DESCRIPTION
 deepseek             *        https://api.deepseek.com                             默认 DeepSeek
 mock                          -                                                    内置假模型
@@ -227,7 +227,7 @@ The command exits non-zero when the database is unreachable, uninitialized, or m
 List the built-in tools. Once the `ToolRegistry` is wired at runtime this reflects the live registry (built-in plus MCP tools).
 
 ```bash
-oryxos tool list
+aegisos tool list
 ```
 
 ```text
@@ -245,10 +245,10 @@ Built-in tools:
 
 ### session list
 
-List sessions stored in the SQLite database (`oryxos.db` in the current directory), newest first. Columns: session id, profile name, status, last active time.
+List sessions stored in the SQLite database (`aegisos.db` in the current directory), newest first. Columns: session id, profile name, status, last active time.
 
 ```bash
-oryxos session list
+aegisos session list
 ```
 
 ```text
@@ -262,18 +262,18 @@ cli:user-002:default                      default          active    2025-06-01 
 
 Manage admin accounts for the management console (`/admin/**`) Basic Auth. Accounts are stored in the `web_users` SQLite table; passwords are BCrypt-hashed and never stored in plaintext. Changes take effect immediately — no server restart is required for new accounts to work.
 
-> Basic Auth is opt-in. It is disabled by default (`oryxos.web.auth.enabled=false`, assuming a trusted internal network). Enable it in `config/application.yml`, then create at least one account before starting `serve` — otherwise startup is blocked with a clear error.
+> Basic Auth is opt-in. It is disabled by default (`aegisos.web.auth.enabled=false`, assuming a trusted internal network). Enable it in `config/application.yml`, then create at least one account before starting `serve` — otherwise startup is blocked with a clear error.
 
 ### user add
 
 Create an account. Prompts for a password twice (input is not echoed); the password must be at least 8 characters and the two entries must match.
 
 ```bash
-oryxos user add <username>
+aegisos user add <username>
 ```
 
 ```bash
-oryxos user add admin
+aegisos user add admin
 # Password (>= 8 chars): ********
 # Confirm: ********
 # Created user 'admin'
@@ -284,7 +284,7 @@ oryxos user add admin
 List all accounts. **Never prints passwords or hashes.**
 
 ```bash
-oryxos user list
+aegisos user list
 ```
 
 ```text
@@ -300,11 +300,11 @@ The `ROLE` column (039 authorization) is the account's current role; an account 
 Set an account's role (039 authorization): `VIEWER` (read-only) / `EDITOR` (do work and manage assets) / `ADMIN` (manage members, channels, policies, workspace settings). They nest, and the value is case-insensitive. The command **replaces** the role — one role per invocation, never appended; an invalid role name fails with a clear error.
 
 ```bash
-oryxos user role <username> <VIEWER|EDITOR|ADMIN>
+aegisos user role <username> <VIEWER|EDITOR|ADMIN>
 ```
 
 ```bash
-oryxos user role admin ADMIN
+aegisos user role admin ADMIN
 # Role of 'admin' set to ADMIN
 ```
 
@@ -315,7 +315,7 @@ New accounts default to `VIEWER`, so doing real work requires an explicit promot
 Change an account's password. Prompts for the new password twice (not echoed).
 
 ```bash
-oryxos user passwd <username>
+aegisos user passwd <username>
 ```
 
 ### user disable
@@ -323,7 +323,7 @@ oryxos user passwd <username>
 Disable an account without deleting it. A disabled account cannot log in (Basic Auth returns 401).
 
 ```bash
-oryxos user disable <username>
+aegisos user disable <username>
 ```
 
 ### user enable
@@ -331,7 +331,7 @@ oryxos user disable <username>
 Re-enable a previously disabled account (symmetric to `disable`).
 
 ```bash
-oryxos user enable <username>
+aegisos user enable <username>
 ```
 
 ### user delete
@@ -339,5 +339,5 @@ oryxos user enable <username>
 Delete an account permanently.
 
 ```bash
-oryxos user delete <username>
+aegisos user delete <username>
 ```

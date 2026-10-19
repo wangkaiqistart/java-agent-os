@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'OryxOS',
-  titleTemplate: ':title — OryxOS',
+  title: 'AegisOS',
+  titleTemplate: ':title — AegisOS',
   description: 'The self-hosted Agent OS for the enterprise — describe a task in plain language, a team of agents delivers the result',
-  base: '/oryxos/',
+  base: '/aegisos/',
   cleanUrls: true,
   appearance: 'force-light',
 
@@ -13,18 +13,18 @@ export default defineConfig({
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
     ['link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap' }],
-    ['meta', { name: 'author', content: 'OryxOS' }],
-    ['meta', { name: 'keywords', content: 'OryxOS, enterprise agent OS, agent operating system, natural language agents, multi-agent system, agent team, ReAct loop, LLM routing, agent memory, MCP, tool calling, self-hosted AI' }],
+    ['meta', { name: 'author', content: 'AegisOS' }],
+    ['meta', { name: 'keywords', content: 'AegisOS, enterprise agent OS, agent operating system, natural language agents, multi-agent system, agent team, ReAct loop, LLM routing, agent memory, MCP, tool calling, self-hosted AI' }],
     ['meta', { name: 'robots', content: 'index, follow' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:site_name', content: 'OryxOS' }],
-    ['meta', { property: 'og:title', content: 'OryxOS — Enterprise Agent OS' }],
+    ['meta', { property: 'og:site_name', content: 'AegisOS' }],
+    ['meta', { property: 'og:title', content: 'AegisOS — Enterprise Agent OS' }],
     ['meta', { property: 'og:description', content: 'The self-hosted Agent OS for the enterprise — describe a task in plain language, a team of agents delivers the result' }],
-    ['meta', { property: 'og:url', content: 'https://oryxos.robustmq.com' }],
+    ['meta', { property: 'og:url', content: 'https://aegisos.robustmq.com' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:title', content: 'OryxOS — Enterprise Agent OS' }],
+    ['meta', { name: 'twitter:title', content: 'AegisOS — Enterprise Agent OS' }],
     ['meta', { name: 'twitter:description', content: 'The self-hosted Agent OS for the enterprise — describe a task in plain language, a team of agents delivers the result' }],
-    ['link', { rel: 'canonical', href: 'https://oryxos.robustmq.com' }],
+    ['link', { rel: 'canonical', href: 'https://aegisos.robustmq.com' }],
   ],
 
   locales: {
@@ -37,15 +37,15 @@ export default defineConfig({
           { text: 'Docs', link: '/docs/what' },
           { text: 'Contribute', link: '/docs/contributing' },
           { text: 'Demo', link: 'http://demo.robustmq.com:1524/admin/' },
-          { text: 'GitHub', link: 'https://github.com/oryx-labs/oryxos' },
+          { text: 'GitHub', link: 'https://github.com/aegis-labs/aegisos' },
         ],
         sidebar: {
           '/docs/': [
             {
               text: 'Introduction',
               items: [
-                { text: 'What is OryxOS', link: '/docs/what' },
-                { text: 'Why OryxOS', link: '/docs/why' },
+                { text: 'What is AegisOS', link: '/docs/what' },
+                { text: 'Why AegisOS', link: '/docs/why' },
               ],
             },
             {
@@ -96,15 +96,15 @@ export default defineConfig({
           { text: '文档', link: '/zh/docs/what' },
           { text: '贡献', link: '/zh/docs/contributing' },
           { text: 'Demo', link: 'http://demo.robustmq.com:1524/admin/' },
-          { text: 'GitHub', link: 'https://github.com/oryx-labs/oryxos' },
+          { text: 'GitHub', link: 'https://github.com/aegis-labs/aegisos' },
         ],
         sidebar: {
           '/zh/docs/': [
             {
               text: '介绍',
               items: [
-                { text: 'OryxOS 是什么', link: '/zh/docs/what' },
-                { text: '为什么选 OryxOS', link: '/zh/docs/why' },
+                { text: 'AegisOS 是什么', link: '/zh/docs/what' },
+                { text: '为什么选 AegisOS', link: '/zh/docs/why' },
               ],
             },
             {
@@ -151,11 +151,11 @@ export default defineConfig({
     siteTitle: false,
     logo: '/logo.svg',
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/oryx-labs/oryxos' },
+      { icon: 'github', link: 'https://github.com/aegis-labs/aegisos' },
     ],
   },
 
   sitemap: {
-    hostname: 'https://oryxos.robustmq.com',
+    hostname: 'https://aegisos.robustmq.com',
   },
 })

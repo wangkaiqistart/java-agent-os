@@ -28,8 +28,8 @@ mvn clean package "-DskipTests"
 4. 初始化与启动（在仓库根目录）：
 
 ```powershell
-java -jar (Get-ChildItem oryxos-boot\target\oryxos-boot-*.jar | Select-Object -First 1).FullName init
-java -jar (Get-ChildItem oryxos-boot\target\oryxos-boot-*.jar | Select-Object -First 1).FullName serve --port 8080
+java -jar (Get-ChildItem aegisos-boot\target\aegisos-boot-*.jar | Select-Object -First 1).FullName init
+java -jar (Get-ChildItem aegisos-boot\target\aegisos-boot-*.jar | Select-Object -First 1).FullName serve --port 8080
 ```
 
 5. 浏览器打开：`http://localhost:8080/admin/`  
@@ -39,13 +39,13 @@ java -jar (Get-ChildItem oryxos-boot\target\oryxos-boot-*.jar | Select-Object -F
 
 ## 构建
 
-OryxOS 是 Maven 多模块项目，从源码构建可执行的 boot JAR：
+AegisOS 是 Maven 多模块项目，从源码构建可执行的 boot JAR：
 
 ```bash
 mvn clean package -DskipTests
 ```
 
-产物在 `oryxos-boot/target/`。下文用 `java -jar oryxos-boot/target/oryxos-boot-*.jar <命令>` 调用；示例里统一简写为 `oryxos <命令>`。
+产物在 `aegisos-boot/target/`。下文用 `java -jar aegisos-boot/target/aegisos-boot-*.jar <命令>` 调用；示例里统一简写为 `aegisos <命令>`。
 
 ## 配置 Provider
 
@@ -57,11 +57,11 @@ cp config/application.yml.example config/application.yml
 
 `config/application.yml` 已在 `.gitignore`（切勿提交真实 Key）。启动脚本通过 `--spring.config.additional-location` 加载它；未覆盖的项从 JAR 内置的默认配置继承。
 
-编辑 `config/application.yml`，为你使用的 Provider 填上 `api-key`。Provider 以列表形式声明在 `oryxos.providers` 下：
+编辑 `config/application.yml`，为你使用的 Provider 填上 `api-key`。Provider 以列表形式声明在 `aegisos.providers` 下：
 
 ```yaml
-oryxos:
-  root: .oryxos
+aegisos:
+  root: .aegisos
   providers:
     - name: deepseek
       api-key: ${DEEPSEEK_API_KEY}      # 环境变量占位符，启动时解析
@@ -71,20 +71,20 @@ oryxos:
 
 用 `${环境变量}` 占位符引用，不要把明文密钥写死。启动时，这里声明的 Provider 会被**播种（seed）进 SQLite 的 `providers` 表**（仅当尚不存在时）；此后数据库是权威来源，你也可以通过管理台或 `/api/v1/providers` 接口动态增删改 Provider——无需重启。
 
-> Spring 对列表类键是**整体替换**而非合并。如果你在外部文件里覆盖 `oryxos.providers`，必须列全所有想保留的 Provider——只写一部分会把其余的丢掉。
+> Spring 对列表类键是**整体替换**而非合并。如果你在外部文件里覆盖 `aegisos.providers`，必须列全所有想保留的 Provider——只写一部分会把其余的丢掉。
 
 ## 初始化工作区
 
-在你希望 OryxOS 运行的目录下执行 `init`，它会创建 `.oryxos/` 工作区：
+在你希望 AegisOS 运行的目录下执行 `init`，它会创建 `.aegisos/` 工作区：
 
 ```bash
-oryxos init
+aegisos init
 ```
 
 创建的内容：
 
 ```text
-.oryxos/
+.aegisos/
 ├── agents/             # 每个子目录 = 一个 Agent（AGENT.md + 可选 skills/ scripts/）
 ├── memory/             # 全局长期记忆（每个 Agent 的 MEMORY.md 在 agents/<name>/ 下）
 ├── sessions/           # 会话数据（备用；会话实际存 SQLite）
@@ -94,22 +94,22 @@ oryxos init
 └── USER.md             # 用户偏好（Agent 只读，不写）
 ```
 
-SQLite 数据库（`oryxos.db`）在首次启动时于运行期创建。
+SQLite 数据库（`aegisos.db`）在首次启动时于运行期创建。
 
 ### 可自定义工作区根目录
 
-工作区默认为 `.oryxos`。若要指向其他位置：
+工作区默认为 `.aegisos`。若要指向其他位置：
 
-- `config/application.yml` 中的 `oryxos.root`——对 Spring 启动的命令（`serve`、`gateway`）生效
-- 环境变量 `ORYXOS_ROOT` 或 `-Doryxos.root=`——对轻命令（`init`、`status`、`profile`）生效，并通过 Spring 宽松绑定同时对启动型命令生效
+- `config/application.yml` 中的 `aegisos.root`——对 Spring 启动的命令（`serve`、`gateway`）生效
+- 环境变量 `AEGISOS_ROOT` 或 `-Daegisos.root=`——对轻命令（`init`、`status`、`profile`）生效，并通过 Spring 宽松绑定同时对启动型命令生效
 
 配置的根目录会在运行期自动纳入文件沙箱白名单，改根不会破坏文件工具。
 
 ## 一个目录 = 一个 Agent
 
-一个 Agent 就是 `.oryxos/agents/<name>/` 目录下的一个 `AGENT.md`。该文件 = YAML frontmatter（这个 Agent 的 Profile）+ Markdown 正文（注入 system prompt 的任务指令）。**不再有** `.oryxos/profiles/` 目录——Profile 就是 frontmatter。字段详见 [Profile 配置](/zh/docs/profile)。
+一个 Agent 就是 `.aegisos/agents/<name>/` 目录下的一个 `AGENT.md`。该文件 = YAML frontmatter（这个 Agent 的 Profile）+ Markdown 正文（注入 system prompt 的任务指令）。**不再有** `.aegisos/profiles/` 目录——Profile 就是 frontmatter。字段详见 [Profile 配置](/zh/docs/profile)。
 
-OryxOS 在 `.oryxos/agents/` 下自带三个 Demo Agent 演示这套模型：
+AegisOS 在 `.aegisos/agents/` 下自带三个 Demo Agent 演示这套模型：
 
 | Agent | 做什么 |
 | --- | --- |
@@ -124,7 +124,7 @@ OryxOS 在 `.oryxos/agents/` 下自带三个 Demo Agent 演示这套模型：
 ## 开始对话
 
 ```bash
-oryxos chat --profile weather-daily
+aegisos chat --profile weather-daily
 ```
 
 进入交互式对话界面。输入消息回车——Agent 跑一轮 ReAct 循环（思考、按需调用工具、回复）。输入 `exit` 或按 `Ctrl-D` 退出。
@@ -132,7 +132,7 @@ oryxos chat --profile weather-daily
 ## 启动 API 服务
 
 ```bash
-oryxos serve --port 8080
+aegisos serve --port 8080
 ```
 
 它在 `/api/v1` 下暴露 REST API，并在以下地址提供 **Web 管理台**：
@@ -158,17 +158,17 @@ curl http://localhost:8080/api/v1/health
 每个版本同时在 GHCR 发布多架构容器镜像（`linux/amd64` + `linux/arm64`）——不用装 Java 21、不用下载 tar.gz：
 
 ```bash
-docker run -d --name oryxos -p 8080:8080 -v oryxos-data:/data ghcr.io/oryx-labs/oryxos:latest
+docker run -d --name aegisos -p 8080:8080 -v aegisos-data:/data ghcr.io/aegis-labs/aegisos:latest
 curl http://localhost:8080/api/v1/health      # → {"code":0,…}
 ```
 
-容器**零 key 即可启动**（随后在管理台配置 Provider），全部状态——`config/`、`.oryxos/` 工作区、`oryxos.db`、日志——都落在 `/data` 卷里，升级 = 拉新 tag 重建容器，数据不丢。镜像以非 root 用户运行，内置针对 `/api/v1/health` 的健康检查；开箱即用的 compose 栈见仓库根目录的 `docker-compose.yml`。从源码本地构建镜像：`make docker`（先 `make build`）。
+容器**零 key 即可启动**（随后在管理台配置 Provider），全部状态——`config/`、`.aegisos/` 工作区、`aegisos.db`、日志——都落在 `/data` 卷里，升级 = 拉新 tag 重建容器，数据不丢。镜像以非 root 用户运行，内置针对 `/api/v1/health` 的健康检查；开箱即用的 compose 栈见仓库根目录的 `docker-compose.yml`。从源码本地构建镜像：`make docker`（先 `make build`）。
 
 > 注意：存储是单机 SQLite——**只跑一个容器**。横向扩容需要分布式存储（路线图方向 A）。
 
 ## 下一步
 
-- [OryxOS 是什么](/zh/docs/what) — 了解架构定位和设计理念
+- [AegisOS 是什么](/zh/docs/what) — 了解架构定位和设计理念
 - [ReAct Loop](/zh/docs/react-loop) — 理解 think-act-observe 循环
 - [Profile 配置](/zh/docs/profile) — 每个 AGENT.md frontmatter 字段说明
 - [Tool 体系](/zh/docs/tool) — 内置 Tool 和扩展方式

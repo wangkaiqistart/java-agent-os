@@ -1,22 +1,22 @@
 # Quick Start
 
-Get OryxOS built, configured, and serving your first agents.
+Get AegisOS built, configured, and serving your first agents.
 
 ## Prerequisites
 
-- **Java 21+** — OryxOS requires Java 21 (virtual threads are core to the runtime)
+- **Java 21+** — AegisOS requires Java 21 (virtual threads are core to the runtime)
 - **Maven 3.9+** — to build from source
 - At least one LLM provider API key (DeepSeek, Qwen, Kimi, etc.)
 
 ## Build
 
-OryxOS is a Maven multi-module project. Build the executable boot JAR from source:
+AegisOS is a Maven multi-module project. Build the executable boot JAR from source:
 
 ```bash
 mvn clean package -DskipTests
 ```
 
-The runnable JAR lands in `oryxos-boot/target/`. Everything below assumes you invoke it with `java -jar oryxos-boot/target/oryxos-boot-*.jar <command>`; the examples use `oryxos <command>` as shorthand.
+The runnable JAR lands in `aegisos-boot/target/`. Everything below assumes you invoke it with `java -jar aegisos-boot/target/aegisos-boot-*.jar <command>`; the examples use `aegisos <command>` as shorthand.
 
 ## Configure a provider
 
@@ -28,11 +28,11 @@ cp config/application.yml.example config/application.yml
 
 `config/application.yml` is gitignored (never commit real keys). The launcher loads it via `--spring.config.additional-location`; everything not overridden is inherited from the packaged defaults baked into the JAR.
 
-Edit `config/application.yml` and set the `api-key` for the providers you use. Providers are declared as a list under `oryxos.providers`:
+Edit `config/application.yml` and set the `api-key` for the providers you use. Providers are declared as a list under `aegisos.providers`:
 
 ```yaml
-oryxos:
-  root: .oryxos
+aegisos:
+  root: .aegisos
   providers:
     - name: deepseek
       api-key: ${DEEPSEEK_API_KEY}      # environment placeholder, resolved at startup
@@ -42,20 +42,20 @@ oryxos:
 
 Use `${ENV_VAR}` placeholders rather than hardcoding secrets. On startup, providers declared here are **seeded into the SQLite `providers` table** (only if not already present); after that the database is authoritative and you can also manage providers dynamically via the admin console or the `/api/v1/providers` API — no restart required.
 
-> Spring **replaces** (does not merge) list-valued keys. If you override `oryxos.providers` in your external file, list every provider you want — a partial list drops the rest.
+> Spring **replaces** (does not merge) list-valued keys. If you override `aegisos.providers` in your external file, list every provider you want — a partial list drops the rest.
 
 ## Initialize the workspace
 
-Run `init` in the directory where you want OryxOS to operate. It creates the `.oryxos/` workspace:
+Run `init` in the directory where you want AegisOS to operate. It creates the `.aegisos/` workspace:
 
 ```bash
-oryxos init
+aegisos init
 ```
 
 What gets created:
 
 ```text
-.oryxos/
+.aegisos/
 ├── agents/             # each subdirectory = one Agent (AGENT.md + optional skills/ scripts/)
 ├── memory/             # global long-term memory (per-agent MEMORY.md lives under agents/<name>/)
 ├── sessions/           # session data (reserved; sessions live in SQLite)
@@ -65,22 +65,22 @@ What gets created:
 └── USER.md             # your preferences (agents read, never write)
 ```
 
-The SQLite database (`oryxos.db`) is created at runtime on first boot.
+The SQLite database (`aegisos.db`) is created at runtime on first boot.
 
 ### Configurable workspace root
 
-The workspace defaults to `.oryxos`. To point OryxOS at a different location:
+The workspace defaults to `.aegisos`. To point AegisOS at a different location:
 
-- `oryxos.root` in `config/application.yml` — affects the Spring-booted commands (`serve`, `gateway`)
-- env `ORYXOS_ROOT` or `-Doryxos.root=` — affects the lightweight CLI commands (`init`, `status`, `profile`) and, via Spring relaxed binding, the booted commands too
+- `aegisos.root` in `config/application.yml` — affects the Spring-booted commands (`serve`, `gateway`)
+- env `AEGISOS_ROOT` or `-Daegisos.root=` — affects the lightweight CLI commands (`init`, `status`, `profile`) and, via Spring relaxed binding, the booted commands too
 
 The configured root is automatically added to the file sandbox whitelist at runtime, so changing it never breaks the file tools.
 
 ## The one-directory-is-one-agent model
 
-An Agent is a directory under `.oryxos/agents/<name>/` containing an `AGENT.md`. That file is YAML frontmatter (the agent's Profile) plus a Markdown body (task instructions injected into the system prompt). There is no `.oryxos/profiles/` directory — the Profile *is* the frontmatter. See the [Profile reference](/docs/profile) for every field.
+An Agent is a directory under `.aegisos/agents/<name>/` containing an `AGENT.md`. That file is YAML frontmatter (the agent's Profile) plus a Markdown body (task instructions injected into the system prompt). There is no `.aegisos/profiles/` directory — the Profile *is* the frontmatter. See the [Profile reference](/docs/profile) for every field.
 
-OryxOS ships with three demo agents under `.oryxos/agents/` that show the model in practice:
+AegisOS ships with three demo agents under `.aegisos/agents/` that show the model in practice:
 
 | Agent | What it does |
 | --- | --- |
@@ -95,7 +95,7 @@ All three use provider `deepseek` (model `deepseek-v4-flash`) and reference a no
 ## Start chatting
 
 ```bash
-oryxos chat --profile weather-daily
+aegisos chat --profile weather-daily
 ```
 
 You get an interactive prompt. Type a message and press Enter — the agent runs a ReAct loop (think, call tools if needed, respond). Type `exit` or press `Ctrl-D` to quit.
@@ -103,7 +103,7 @@ You get an interactive prompt. Type a message and press Enter — the agent runs
 ## Start the API server
 
 ```bash
-oryxos serve --port 8080
+aegisos serve --port 8080
 ```
 
 This exposes the REST API under `/api/v1` and serves the **web admin console** at:
@@ -129,11 +129,11 @@ Every API response is wrapped in this `{ code, message, data, timestamp }` envel
 Every release also ships a multi-arch container image (`linux/amd64` + `linux/arm64`) on GHCR — no Java 21 install, no tarball download:
 
 ```bash
-docker run -d --name oryxos -p 8080:8080 -v oryxos-data:/data ghcr.io/oryx-labs/oryxos:latest
+docker run -d --name aegisos -p 8080:8080 -v aegisos-data:/data ghcr.io/aegis-labs/aegisos:latest
 curl http://localhost:8080/api/v1/health      # → {"code":0,…}
 ```
 
-The container boots keyless (configure providers in the web console afterwards) and keeps **all state** — `config/`, the `.oryxos/` workspace, `oryxos.db`, logs — in the `/data` volume, so upgrading means pulling a new tag and recreating the container. The image runs as a non-root user and carries a built-in healthcheck against `/api/v1/health`; see `docker-compose.yml` at the repo root for a ready-to-use compose stack. To build the image locally from source: `make docker` (after `make build`).
+The container boots keyless (configure providers in the web console afterwards) and keeps **all state** — `config/`, the `.aegisos/` workspace, `aegisos.db`, logs — in the `/data` volume, so upgrading means pulling a new tag and recreating the container. The image runs as a non-root user and carries a built-in healthcheck against `/api/v1/health`; see `docker-compose.yml` at the repo root for a ready-to-use compose stack. To build the image locally from source: `make docker` (after `make build`).
 
 > Note: storage is single-node SQLite — run **one** container. Horizontal scaling requires the distributed storage track (roadmap A).
 

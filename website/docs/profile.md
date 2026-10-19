@@ -1,11 +1,11 @@
 # Profile Reference (AGENT.md frontmatter)
 
-In OryxOS, **one directory = one Agent**. An Agent is a directory at `.oryxos/agents/<name>/` whose `AGENT.md` file defines it. That file is:
+In AegisOS, **one directory = one Agent**. An Agent is a directory at `.aegisos/agents/<name>/` whose `AGENT.md` file defines it. That file is:
 
 - **YAML frontmatter** — the Agent's *Profile*: who it is, which provider/model it uses, which tools it can call, its schedules, and its runtime limits.
 - **Markdown body** — the Agent's task instructions, injected into the system prompt.
 
-There is **no `.oryxos/profiles/` directory**. The Profile *is* the frontmatter; it is not a separate file. Optional `skills/*.md`, `scripts/`, and `REFERENCE.md` can sit in the same directory and are loaded on demand from the body via `read_file` / `shell` — they are **not** declared in frontmatter.
+There is **no `.aegisos/profiles/` directory**. The Profile *is* the frontmatter; it is not a separate file. Optional `skills/*.md`, `scripts/`, and `REFERENCE.md` can sit in the same directory and are loaded on demand from the body via `read_file` / `shell` — they are **not** declared in frontmatter.
 
 Agents can be created and edited **dynamically** through the `/api/v1/agents` API and the web admin console — writing or editing `AGENT.md` and re-registering the agent live, with no restart.
 
@@ -13,7 +13,7 @@ Agents can be created and edited **dynamically** through the `/api/v1/agents` AP
 
 ## Full example
 
-`.oryxos/agents/ops-agent/AGENT.md`:
+`.aegisos/agents/ops-agent/AGENT.md`:
 
 ```markdown
 ---
@@ -79,7 +79,7 @@ The text below the closing `---` is the **body**: it is injected into the system
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | yes | Unique identifier for the agent. Matches the directory name and is used in CLI (`--profile <name>`) and API paths (`/api/v1/agents/{name}`). |
-| `description` | string | no | Human-readable description shown in the admin console and `oryxos profile list`. |
+| `description` | string | no | Human-readable description shown in the admin console and `aegisos profile list`. |
 | `identity` | object | yes | The agent's name and core prompt. See [Identity](#identity). |
 | `provider` | object | yes | LLM provider and model selection. See [Provider](#provider). |
 | `tools` | list of strings | no | Tool names to enable for this agent. Must be registered in `ToolRegistry`. Defaults to no tools. |
@@ -109,13 +109,13 @@ The text below the closing `---` is the **body**: it is injected into the system
 
 ## Provider configuration
 
-`provider.name` references a provider by name. OryxOS keeps an explicit `name → ChatModel` mapping (Constitution III — never Spring bean-type scanning), but the mapping is **runtime-mutable**: providers are stored in the SQLite `providers` table and resolved dynamically by name.
+`provider.name` references a provider by name. AegisOS keeps an explicit `name → ChatModel` mapping (Constitution III — never Spring bean-type scanning), but the mapping is **runtime-mutable**: providers are stored in the SQLite `providers` table and resolved dynamically by name.
 
-Providers are seeded on startup from `config/application.yml` (list under `oryxos.providers`), then managed dynamically through the admin console or the `/api/v1/providers` API:
+Providers are seeded on startup from `config/application.yml` (list under `aegisos.providers`), then managed dynamically through the admin console or the `/api/v1/providers` API:
 
 ```yaml
 # config/application.yml
-oryxos:
+aegisos:
   providers:
     - name: deepseek
       api-key: ${DEEPSEEK_API_KEY}
@@ -155,14 +155,14 @@ Built-in tool names:
 
 > For Feishu / WeCom / DingTalk inbound agents that should answer “search the web” / live facts, list `web_search` in `tools:` (and usually `http_get` + `fetch_webpage`). A `CONNECTED` channel is not enough — unlisted tools never reach the model. See [Tool system](/docs/tool) (“Enabling web search for IM / business agents”).
 
-MCP tools from configured `mcp_servers` are available by their server-declared names (e.g. `github_create_pr`). Run `oryxos tool list` to see all registered names. See the [Tool system](/docs/tool) for details, including how the `notify` tool resolves a channel by name.
+MCP tools from configured `mcp_servers` are available by their server-declared names (e.g. `github_create_pr`). Run `aegisos tool list` to see all registered names. See the [Tool system](/docs/tool) for details, including how the `notify` tool resolves a channel by name.
 
 ### Sub-instructions and scripts (no frontmatter field)
 
 Reusable instructions and helper scripts live **inside the agent directory**, not in frontmatter:
 
 ```text
-.oryxos/agents/ops-agent/
+.aegisos/agents/ops-agent/
 ├── AGENT.md            # frontmatter (Profile) + body (task instructions)
 ├── skills/
 │   └── deploy-runbook.md
@@ -185,13 +185,13 @@ Bootstrap files are prepended to the system prompt in the order listed. They app
 | `SOUL.md` | Human | Agent personality definition — tone, style, values |
 | `USER.md` | Human only | User preferences and background — agents read this but never write to it |
 
-`USER.md` is strictly read-only from OryxOS's perspective. The agent-writable equivalent is `MEMORY.md`, updated via the `save_memory` tool. Omit any file not relevant to the agent.
+`USER.md` is strictly read-only from AegisOS's perspective. The agent-writable equivalent is `MEMORY.md`, updated via the `save_memory` tool. Omit any file not relevant to the agent.
 
 ---
 
 ## Schedules
 
-`schedules` declares cron-triggered runs of the agent. Each entry requires an Agent-local `key` and a display `name`; OryxOS assigns a stable global `scheduleId` for runtime operations. Use `/api/v2/schedules` and the admin console for listing, running, history, and enable/disable.
+`schedules` declares cron-triggered runs of the agent. Each entry requires an Agent-local `key` and a display `name`; AegisOS assigns a stable global `scheduleId` for runtime operations. Use `/api/v2/schedules` and the admin console for listing, running, history, and enable/disable.
 
 ```yaml
 schedules:

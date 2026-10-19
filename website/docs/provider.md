@@ -1,10 +1,10 @@
 # Provider
 
-OryxOS uses Spring AI's OpenAI connector as a thin protocol adapter for OpenAI-compatible endpoints. On top of that, `ProviderService` owns routing, auditing, and the explicit name-to-model mapping that makes multi-provider setups reliable.
+AegisOS uses Spring AI's OpenAI connector as a thin protocol adapter for OpenAI-compatible endpoints. On top of that, `ProviderService` owns routing, auditing, and the explicit name-to-model mapping that makes multi-provider setups reliable.
 
 ## Providers are dynamic
 
-Providers are no longer a fixed, startup-only map. They are **CRUD-able records stored in SQLite** (the `providers` table) and managed at runtime — through the `/api/v1/providers` REST endpoints or the admin console's **Provider** page. You can add, edit, and delete providers without restarting OryxOS.
+Providers are no longer a fixed, startup-only map. They are **CRUD-able records stored in SQLite** (the `providers` table) and managed at runtime — through the `/api/v1/providers` REST endpoints or the admin console's **Provider** page. You can add, edit, and delete providers without restarting AegisOS.
 
 A provider record has four fields:
 
@@ -19,11 +19,11 @@ The special name `mock` is a built-in fake model — it needs no `apiKey` and no
 
 ## Startup seeding — config to database
 
-On startup OryxOS reads the `oryxos.providers` list from `application.yml` and **seeds** each entry into the `providers` table **only if a provider with that name does not already exist**. After seeding, the **database is authoritative**: editing `oryxos.providers` in config will not overwrite a provider that is already in the DB. Manage live providers through the API or the admin console, not by editing config.
+On startup AegisOS reads the `aegisos.providers` list from `application.yml` and **seeds** each entry into the `providers` table **only if a provider with that name does not already exist**. After seeding, the **database is authoritative**: editing `aegisos.providers` in config will not overwrite a provider that is already in the DB. Manage live providers through the API or the admin console, not by editing config.
 
 ```yaml
 # application.yml — seeds the DB on first startup only
-oryxos:
+aegisos:
   providers:
     - name: deepseek
       api-key: ${DEEPSEEK_API_KEY}       # env placeholder, never hardcoded
@@ -34,7 +34,7 @@ oryxos:
     - name: mock                          # built-in fake model, no key/url needed
 ```
 
-API keys come from environment-variable placeholders (`${...}`) in config — never hardcoded. Note that Spring **replaces** (does not merge) list-valued keys, so an external override of `oryxos.providers` replaces the whole list.
+API keys come from environment-variable placeholders (`${...}`) in config — never hardcoded. Note that Spring **replaces** (does not merge) list-valued keys, so an external override of `aegisos.providers` replaces the whole list.
 
 ## Managing providers via REST
 
@@ -55,14 +55,14 @@ The list and get responses (`ProviderView`) return `name`, `apiKey`, `baseUrl`, 
 Each Agent's `AGENT.md` frontmatter declares exactly one provider by name. When `ReActLoop` needs an LLM call, `ProviderService` looks the provider up **by name in the registry** and resolves its `ChatModel`.
 
 ```yaml
-# .oryxos/agents/ops-agent/AGENT.md (frontmatter)
+# .aegisos/agents/ops-agent/AGENT.md (frontmatter)
 provider:
   name: deepseek          # matches a provider record's name
   model: deepseek-chat
   temperature: 0.7
 ```
 
-A single OryxOS instance can run agents on different providers simultaneously. One agent might use `deepseek`, another `anthropic` — the Agent's frontmatter is the routing table entry.
+A single AegisOS instance can run agents on different providers simultaneously. One agent might use `deepseek`, another `anthropic` — the Agent's frontmatter is the routing table entry.
 
 ### Dynamic resolution and caching
 

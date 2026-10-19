@@ -1,6 +1,6 @@
 # ReAct Loop
 
-OryxOS implements the ReAct (Reason + Act) algorithm entirely from scratch — a few dozen lines of Java in `ReActLoop.java`. There is no framework delegation, no black-box agent abstraction. Every iteration is observable and auditable.
+AegisOS implements the ReAct (Reason + Act) algorithm entirely from scratch — a few dozen lines of Java in `ReActLoop.java`. There is no framework delegation, no black-box agent abstraction. Every iteration is observable and auditable.
 
 ![ReAct Loop](/images/react-loop.svg)
 
@@ -37,7 +37,7 @@ User message
 | # | Part | Source | Owner |
 | --- | --- | --- | --- |
 | 1 | System prompt — the Agent's `AGENT.md` body + Bootstrap files (`AGENTS.md`, `SOUL.md`, `USER.md`) | Filesystem | `ContextLoader` |
-| 2 | Long-term memory — full text of the Agent's `MEMORY.md` (truncated at 4 000 chars) | `.oryxos/agents/<name>/MEMORY.md` (falls back to `.oryxos/memory/MEMORY.md`) | `MemoryService` |
+| 2 | Long-term memory — full text of the Agent's `MEMORY.md` (truncated at 4 000 chars) | `.aegisos/agents/<name>/MEMORY.md` (falls back to `.aegisos/memory/MEMORY.md`) | `MemoryService` |
 | 3 | Conversation history — last `max_history_turns` turns, as structured messages (including prior assistant tool calls and tool results with their ids) | SQLite `sessions.messages_json` | `SessionManager` |
 | 4 | Available tools — JSON Schema for each tool the Agent exposes | `ToolRegistry` | `ToolRegistry` |
 
@@ -50,7 +50,7 @@ The prompt is rebuilt on every iteration. Tool calls and their results are carri
 `ToolExecutor` is responsible for everything that happens between the LLM deciding to call a tool and the result being added to the conversation:
 
 1. **Parse** — extract tool name and arguments from the model's response
-2. **Look up** — find the `OryxTool` implementation in `ToolRegistry`
+2. **Look up** — find the `AegisTool` implementation in `ToolRegistry`
 3. **Validate** — `SandboxChecker` checks the call against the configured whitelists
 4. **Execute** — built-in tools run in-process; MCP tools are forwarded over JSON-RPC
 5. **Audit** — write a row to `tool_invocations` (success, duration, input, result)

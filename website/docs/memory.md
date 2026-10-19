@@ -1,13 +1,13 @@
 # Memory
 
-OryxOS gives agents memory across three layers. Each layer has a different scope, lifetime, and storage backend. `MemoryService` is the unified facade that `ReActLoop` and `PromptBuilder` talk to — they do not access layers directly.
+AegisOS gives agents memory across three layers. Each layer has a different scope, lifetime, and storage backend. `MemoryService` is the unified facade that `ReActLoop` and `PromptBuilder` talk to — they do not access layers directly.
 
 ## Three layers
 
 | Layer | Storage | Scope | In core phase |
 | --- | --- | --- | --- |
 | Session memory | SQLite `sessions.messages_json` | Current conversation only | Yes |
-| Long-term memory | `.oryxos/agents/<name>/MEMORY.md` (per-agent) | Persists across sessions, per agent | Yes |
+| Long-term memory | `.aegisos/agents/<name>/MEMORY.md` (per-agent) | Persists across sessions, per agent | Yes |
 | Episodic memory | Vector database (planned) | Semantic search across past sessions | No |
 
 **Session memory** is the conversation history — the list of messages accumulated in the current session. It is serialized as JSON and stored in SQLite. `PromptBuilder` injects the last `max_history_turns` turns into every prompt. It accumulates automatically; agents do not write to it explicitly.
@@ -18,7 +18,7 @@ OryxOS gives agents memory across three layers. Each layer has a different scope
 
 ## Long-term memory is per-agent
 
-Long-term memory follows the "one directory = one Agent" principle: each agent has its own memory file at `.oryxos/agents/<name>/MEMORY.md`, alongside that agent's `AGENT.md` and `skills/`. When there is no agent context (a direct, non-agent-triggered call, or a unit test), it falls back to the global `.oryxos/memory/MEMORY.md`. The agent name is validated; any unsafe segment falls back to the global file to prevent path traversal.
+Long-term memory follows the "one directory = one Agent" principle: each agent has its own memory file at `.aegisos/agents/<name>/MEMORY.md`, alongside that agent's `AGENT.md` and `skills/`. When there is no agent context (a direct, non-agent-triggered call, or a unit test), it falls back to the global `.aegisos/memory/MEMORY.md`. The agent name is validated; any unsafe segment falls back to the global file to prevent path traversal.
 
 The current agent is resolved from the execution context — the `save_memory` / `recall_memory` tool path sets it via `ToolExecutionContext`, and the read path (`buildContext` / per-agent read) sets it temporarily around the load.
 
@@ -33,7 +33,7 @@ Every entry is written as a **timestamped** line, `- [yyyy-MM-dd HH:mm:ss] <cont
 
 ### No automatic trigger footprint
 
-OryxOS does **not** auto-append a “user message ⇒ reply” line to archival memory after every trigger. Failed replies that echo the question would otherwise dominate semantic recall and lock the model into repeating the failure. Execution trails already live in `tool_invocations` / `agent_executions`; lasting facts should be written explicitly with `save_memory`.
+AegisOS does **not** auto-append a “user message ⇒ reply” line to archival memory after every trigger. Failed replies that echo the question would otherwise dominate semantic recall and lock the model into repeating the failure. Execution trails already live in `tool_invocations` / `agent_executions`; lasting facts should be written explicitly with `save_memory`.
 
 ## Long-term memory operations
 
@@ -64,12 +64,12 @@ The long-term memory backend is pluggable via the `memory.backend` config key �
 
 Agents interact with long-term memory through two built-in tools, not by writing to `MEMORY.md` directly.
 
-**`save_memory`** — appends a piece of text to the current agent's `MEMORY.md`, into the `core` or `archival` section. The agent decides what to save, where, and when. There is no automatic summarization in core phase.
+**`save_memory`** — appends a piece of text to the configured long-term memory backend, into the `core` or `archival` section. With the default `MarkdownMemoryStore`, this is the current agent's `MEMORY.md`. The agent decides what to save, where, and when. There is no automatic summarization in core phase.
 
 ```text
 Tool: save_memory
 Input: { "content": "User prefers concise responses, no bullet lists.", "scope": "archival" }
-Effect: appends a timestamped entry to the agent's MEMORY.md archival section
+Effect: appends a timestamped entry to the configured backend's archival section
 ```
 
 **`recall_memory`** — searches the archival section by keyword and returns matching lines. Useful when the agent needs to check whether it already knows something before saving a duplicate.
@@ -112,10 +112,10 @@ These two files look similar but serve opposite purposes:
 | | `MEMORY.md` | `USER.md` |
 | --- | --- | --- |
 | Who writes it | The agent (via `save_memory`) | The user (manually) |
-| OryxOS behavior | Read + write | Read only |
+| AegisOS behavior | Read + write | Read only |
 | Contents | Agent's accumulated observations, learned facts, and run history | User's initial preferences and context |
 | Resets | Never (append-only; archival truncation only when too large) | Never (managed by user) |
-| Location | `.oryxos/agents/<name>/MEMORY.md` (per-agent) | `.oryxos/USER.md` |
+| Location | `.aegisos/agents/<name>/MEMORY.md` (per-agent) | `.aegisos/USER.md` |
 
 `USER.md` is part of the Bootstrap group injected at position [1] in the prompt. `MEMORY.md` is injected at position [2]. Both are visible to the agent; only `MEMORY.md` can be modified by the agent.
 

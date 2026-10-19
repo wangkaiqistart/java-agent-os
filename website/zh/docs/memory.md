@@ -1,13 +1,13 @@
 # 记忆系统
 
-OryxOS 为 Agent 提供三层记忆。每一层有不同的作用域、生命周期和存储后端。`MemoryService` 是统一的门面，`ReActLoop` 和 `PromptBuilder` 都通过它来访问记忆，不直接接触各层的实现。
+AegisOS 为 Agent 提供三层记忆。每一层有不同的作用域、生命周期和存储后端。`MemoryService` 是统一的门面，`ReActLoop` 和 `PromptBuilder` 都通过它来访问记忆，不直接接触各层的实现。
 
 ## 三层记忆
 
 | 层级 | 存储 | 作用域 | 核心阶段 |
 | --- | --- | --- | --- |
 | 会话记忆 | SQLite `sessions.messages_json` | 仅限当前对话 | 是 |
-| 长期记忆 | `.oryxos/agents/<name>/MEMORY.md`（按 Agent 隔离） | 跨会话持久化，按 Agent 隔离 | 是 |
+| 长期记忆 | `.aegisos/agents/<name>/MEMORY.md`（按 Agent 隔离） | 跨会话持久化，按 Agent 隔离 | 是 |
 | 情景记忆 | 向量数据库（规划中） | 跨历史会话的语义检索 | 否 |
 
 **会话记忆** 是对话历史——当前会话中积累的消息列表。以 JSON 格式序列化存入 SQLite。`PromptBuilder` 在每次构建 Prompt 时注入最近 `max_history_turns` 轮。它自动积累，Agent 不需要显式写入。
@@ -18,7 +18,7 @@ OryxOS 为 Agent 提供三层记忆。每一层有不同的作用域、生命周
 
 ## 长期记忆按 Agent 隔离
 
-长期记忆遵循「一个目录 = 一个 Agent」原则：每个 Agent 有自己的记忆文件 `.oryxos/agents/<name>/MEMORY.md`，与该 Agent 的 `AGENT.md`、`skills/` 同目录。无 Agent 上下文（非 Agent 触发的直接调用、单测）时，回退到全局 `.oryxos/memory/MEMORY.md`。Agent 名会做安全校验，任何非法段一律回退全局文件，防止目录穿越。
+长期记忆遵循「一个目录 = 一个 Agent」原则：每个 Agent 有自己的记忆文件 `.aegisos/agents/<name>/MEMORY.md`，与该 Agent 的 `AGENT.md`、`skills/` 同目录。无 Agent 上下文（非 Agent 触发的直接调用、单测）时，回退到全局 `.aegisos/memory/MEMORY.md`。Agent 名会做安全校验，任何非法段一律回退全局文件，防止目录穿越。
 
 当前是哪个 Agent 由执行上下文决定——`save_memory` / `recall_memory` 工具路径通过 `ToolExecutionContext` 置入，读路径（`buildContext` / 按 Agent 读取）在 load 前后临时置入。
 
@@ -33,7 +33,7 @@ OryxOS 为 Agent 提供三层记忆。每一层有不同的作用域、生命周
 
 ### 不再自动写触发足迹
 
-OryxOS **不会**在每次触发后自动把「用户问题 ⇒ 模型回答」写入归档记忆。失败回答一旦带上问句原文，语义召回会把它排到最前，轻量模型容易照抄，形成失败自我固化。执行留痕已在 `tool_invocations` / `agent_executions`；要沉淀的事实由 Agent 显式调用 `save_memory`。
+AegisOS **不会**在每次触发后自动把「用户问题 ⇒ 模型回答」写入归档记忆。失败回答一旦带上问句原文，语义召回会把它排到最前，轻量模型容易照抄，形成失败自我固化。执行留痕已在 `tool_invocations` / `agent_executions`；要沉淀的事实由 Agent 显式调用 `save_memory`。
 
 ## 长期记忆的操作
 
@@ -64,12 +64,12 @@ OryxOS **不会**在每次触发后自动把「用户问题 ⇒ 模型回答」�
 
 Agent 通过两个内置工具与长期记忆交互，不直接写 `MEMORY.md`。
 
-**`save_memory`** — 向当前 Agent 的 `MEMORY.md` 追加一段文本，写入 `core` 或 `archival` 区块。Agent 自己决定保存什么、写哪个区、何时保存。核心阶段没有自动摘要。
+**`save_memory`** — 向配置的长期记忆后端追加一段文本，写入 `core` 或 `archival` 区块。默认 `MarkdownMemoryStore` 对应当前 Agent 的 `MEMORY.md`。Agent 自己决定保存什么、写哪个区、何时保存。核心阶段没有自动摘要。
 
 ```text
 工具: save_memory
 输入: { "content": "用户偏好简洁的回复，不用列表。", "scope": "archival" }
-效果: 向该 Agent 的 MEMORY.md 归档区追加带时间戳的条目
+效果: 向配置后端的归档区追加带时间戳的条目
 ```
 
 **`recall_memory`** — 按关键词检索归档区，返回匹配的行。在保存之前，Agent 可以先检索确认自己是否已经知道某件事，避免重复记录。
@@ -112,10 +112,10 @@ GET /api/v1/agents/{name}/memory
 | | `MEMORY.md` | `USER.md` |
 | --- | --- | --- |
 | 谁来写 | Agent（通过 `save_memory`） | 用户（手动编写） |
-| OryxOS 的行为 | 读 + 写 | 只读 |
+| AegisOS 的行为 | 读 + 写 | 只读 |
 | 内容 | Agent 积累的观察、学到的事实，以及运行历史 | 用户的初始偏好和背景信息 |
 | 重置 | 从不（只追加；仅归档区过长时截断） | 从不（由用户自行管理） |
-| 位置 | `.oryxos/agents/<name>/MEMORY.md`（按 Agent 隔离） | `.oryxos/USER.md` |
+| 位置 | `.aegisos/agents/<name>/MEMORY.md`（按 Agent 隔离） | `.aegisos/USER.md` |
 
 `USER.md` 属于 Bootstrap 组，在 Prompt 的第 [1] 段注入。`MEMORY.md` 在第 [2] 段注入。两者对 Agent 都可见，但只有 `MEMORY.md` 可以被 Agent 修改。
 

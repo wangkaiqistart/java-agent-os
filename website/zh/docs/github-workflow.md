@@ -2,7 +2,7 @@
 
 > 第一次在 GitHub 上和别人协作？这篇给你。看完你就能提第一个 PR、看懂评审里那些"黑话"。
 
-开源协作有一套通用流程和一套通用"暗语"。它们在 OryxOS、在 Linux 内核、在几乎所有 GitHub 项目里都一样。**学会一次，走到哪都能用。** 别怕，每个 maintainer 都是从看不懂这些开始的。
+开源协作有一套通用流程和一套通用"暗语"。它们在 AegisOS、在 Linux 内核、在几乎所有 GitHub 项目里都一样。**学会一次，走到哪都能用。** 别怕，每个 maintainer 都是从看不懂这些开始的。
 
 ## 核心流程：Fork → Branch → PR → Review → Merge
 
@@ -15,8 +15,8 @@
 ### 2. Clone & Branch（克隆和拉分支）
 
 ```bash
-git clone https://github.com/<你的用户名>/oryxos.git
-cd oryxos
+git clone https://github.com/<你的用户名>/aegisos.git
+cd aegisos
 git checkout -b fix/typo-in-readme    # 语义化分支名：类型/做什么
 ```
 
@@ -79,7 +79,7 @@ CI 全绿 + 拿到足够 Approve，maintainer 就会合并。你的名字从此�
 **同步最新的 main（rebase）**——PR 落后于主干、或有冲突时：
 
 ```bash
-git remote add upstream https://github.com/oryx-labs/oryxos.git   # 只需加一次
+git remote add upstream https://github.com/aegis-labs/aegisos.git   # 只需加一次
 git fetch upstream
 git rebase upstream/main
 # 有冲突就手动解决，然后：

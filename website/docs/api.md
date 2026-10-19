@@ -1,11 +1,11 @@
 # REST API
 
-OryxOS exposes a JSON REST API under the `/api/v1` prefix. No authentication is required in the core phase — deployment assumes an internal network. All request and response bodies are JSON.
+AegisOS exposes a JSON REST API under the `/api/v1` prefix. No authentication is required in the core phase — deployment assumes an internal network. All request and response bodies are JSON.
 
 Start the server with:
 
 ```bash
-oryxos serve --port 8080
+aegisos serve --port 8080
 ```
 
 ---
@@ -72,7 +72,7 @@ Returns the application name and the list of configured providers (the "configur
 ```json
 // data
 {
-  "application": "oryxos",
+  "application": "aegisos",
   "providers": ["deepseek", "qwen"]
 }
 ```
@@ -81,13 +81,13 @@ Returns the application name and the list of configured providers (the "configur
 
 ## Agents
 
-An Agent is a directory `.oryxos/agents/<name>/` whose `AGENT.md` holds the frontmatter (the Agent's Profile) plus the task body. These endpoints manage the full dynamic lifecycle — create, read, update, delete, invoke, and inspect an Agent's memory and console session.
+An Agent is a directory `.aegisos/agents/<name>/` whose `AGENT.md` holds the frontmatter (the Agent's Profile) plus the task body. These endpoints manage the full dynamic lifecycle — create, read, update, delete, invoke, and inspect an Agent's memory and console session.
 
 ### Create an agent
 
 **POST** `/api/v1/agents`
 
-Scaffolds `.oryxos/agents/<name>/AGENT.md`, derives its Profile, and registers it. On failure the partial directory is rolled back.
+Scaffolds `.aegisos/agents/<name>/AGENT.md`, derives its Profile, and registers it. On failure the partial directory is rolled back.
 
 ```json
 // request
@@ -204,7 +204,7 @@ Runs a single-turn ReAct Loop without creating a persistent session.
 
 **GET** `/api/v1/agents/{name}/memory`
 
-Returns the raw content of this agent's `MEMORY.md` (`.oryxos/agents/<name>/MEMORY.md`, falling back to the global `.oryxos/memory/MEMORY.md` when there is no agent context). Memory is per-agent; each line is timestamped.
+Returns the raw content of this agent's `MEMORY.md` (`.aegisos/agents/<name>/MEMORY.md`, falling back to the global `.aegisos/memory/MEMORY.md` when there is no agent context). Memory is per-agent; each line is timestamped.
 
 ```json
 // data — the MEMORY.md text
@@ -297,7 +297,7 @@ Saves a (possibly user-edited) set of Agent files. Saving takes effect immediate
 
 ## Providers
 
-Providers are managed **dynamically** and stored in SQLite (the `providers` table). At runtime the `ChatModel` is resolved by provider name from the registry and cached by `(name | apiKey | baseUrl)`, so editing a key or URL rebuilds the model on the next call. The name `mock` is a built-in fake model that needs no key or URL. The `oryxos.providers[]` entries in `application.yml` are **seeded** into the table on startup only when absent — after that the DB is authoritative.
+Providers are managed **dynamically** and stored in SQLite (the `providers` table). At runtime the `ChatModel` is resolved by provider name from the registry and cached by `(name | apiKey | baseUrl)`, so editing a key or URL rebuilds the model on the next call. The name `mock` is a built-in fake model that needs no key or URL. The `aegisos.providers[]` entries in `application.yml` are **seeded** into the table on startup only when absent — after that the DB is authoritative.
 
 > The `apiKey` is returned in **plaintext** by design (core-phase internal-network deployment).
 
@@ -502,7 +502,7 @@ Event types (`data:` is single-line JSON):
 | `tool_end` | `{"name":"shell","success":true}` | Tool call finished |
 | `done` | `{"reply":"full reply"}` | Terminal event (exactly one of done/error) |
 | `error` | `{"code":500,"message":"…"}` | Terminal event for mid-stream failures |
-| `: ping` | — (SSE comment line) | Heartbeat every `oryxos.web.sse.heartbeat-seconds` (default 15s); parsers should ignore it |
+| `: ping` | — (SSE comment line) | Heartbeat every `aegisos.web.sse.heartbeat-seconds` (default 15s); parsers should ignore it |
 
 Semantic promises: concatenated `token` deltas equal `done.reply`; pre-stream failures (404/401/400) still return JSON status codes; if the client disconnects mid-stream the server completes the round anyway — history and audit rows are written as usual (no refund on disconnect); streaming and non-streaming write identical `llm_calls`/`tool_invocations` audit records. Full contract: `specs/019-sse-streaming/contracts/sse-protocol.md` in the repository.
 
@@ -656,7 +656,7 @@ Triggers the task immediately and returns the resulting execution record(s).
 
 **GET** `/api/v1/profiles`
 
-Returns the derived Profiles — one per Agent directory under `.oryxos/agents/`.
+Returns the derived Profiles — one per Agent directory under `.aegisos/agents/`.
 
 ```json
 // data — ProfileView[]
@@ -705,7 +705,7 @@ Returns all three categories at once.
 ```json
 // data
 {
-  "file": ["/home/user/project/.oryxos"],
+  "file": ["/home/user/project/.aegisos"],
   "shell": ["ls", "cat", "echo", "grep"],
   "http": ["*.open-meteo.com", "hn.algolia.com"]
 }
@@ -808,7 +808,7 @@ Steps are sorted by occurrence time; failed and policy-blocked steps (`blockedBy
 
 ### Display-layer redaction
 
-On the timeline, a TOOL step's `inputSummary`/`resultSummary`/`errorMessage` are **truncated (200 chars) + redacted** display values: known API key prefixes (`sk-…`/`oryx_…`), `Authorization` credentials, URL userinfo, and `password/secret/token/api_key`-style field values are masked to `first 4 chars + ****`. Stored rows keep the original text (full forensic context; DB access = ops privilege boundary). Rules are built in and non-configurable; content without sensitive shapes is shown as-is.
+On the timeline, a TOOL step's `inputSummary`/`resultSummary`/`errorMessage` are **truncated (200 chars) + redacted** display values: known API key prefixes (`sk-…`/`aegis_…`), `Authorization` credentials, URL userinfo, and `password/secret/token/api_key`-style field values are masked to `first 4 chars + ****`. Stored rows keep the original text (full forensic context; DB access = ops privilege boundary). Rules are built in and non-configurable; content without sensitive shapes is shown as-is.
 
 ---
 
@@ -816,7 +816,7 @@ On the timeline, a TOOL step's `inputSummary`/`resultSummary`/`errorMessage` are
 
 **Fallback (023)**: the `provider` section of `AGENT.md` accepts an ordered fallback list — when a single LLM call hits a provider-side failure (network/timeout/5xx/429/401/403), the call retries the same request through the fallback chain in declared order; only when all candidates fail is the last error thrown. Business-level failures (400-class) never switch. Switching is scoped to a single LLM call (ReAct iteration semantics unchanged; every call starts from the primary — no cross-request health memory); streaming calls may switch only before the first content fragment is emitted. Every attempt writes its own `llm_calls` row (primary and fallback both audited, same trace), and each switch logs a WARN (from→to, with traceId). Zero declarations = zero behavior change.
 
-**Business metrics (023)**: `GET /actuator/prometheus` (existing endpoint) gains `oryxos_`-prefixed metrics for enterprise monitoring stacks — `oryxos_llm_calls_total{provider,model,outcome}` (same cardinality as `llm_calls` rows), `oryxos_llm_call_duration_seconds`, `oryxos_llm_tokens_total{type}`, `oryxos_tool_invocations_total{tool,outcome}`, `oryxos_policy_blocks_total{tool}`, `oryxos_fallback_switches_total{from,to}`. Metrics serve aggregation and alerting; the audit tables remain the source of precise replay (orthogonal — metrics never change audit semantics). Absent or zero series simply mean the event has not occurred.
+**Business metrics (023)**: `GET /actuator/prometheus` (existing endpoint) gains `aegisos_`-prefixed metrics for enterprise monitoring stacks — `aegisos_llm_calls_total{provider,model,outcome}` (same cardinality as `llm_calls` rows), `aegisos_llm_call_duration_seconds`, `aegisos_llm_tokens_total{type}`, `aegisos_tool_invocations_total{tool,outcome}`, `aegisos_policy_blocks_total{tool}`, `aegisos_fallback_switches_total{from,to}`. Metrics serve aggregation and alerting; the audit tables remain the source of precise replay (orthogonal — metrics never change audit semantics). Absent or zero series simply mean the event has not occurred.
 
 ---
 
@@ -833,7 +833,7 @@ The root node is named after the workspace directory.
 ```json
 // data — FileNode
 {
-  "name": ".oryxos",
+  "name": ".aegisos",
   "path": "",
   "type": "dir",
   "children": [

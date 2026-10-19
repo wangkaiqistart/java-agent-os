@@ -14,7 +14,7 @@ const capabilities = computed(() => [
       '一个 Agent 就是一个目录：AGENT.md = frontmatter（profile）+ 正文（任务指令），可选 skills/、scripts/。REST 创建、一句话 LLM 生成，或直接拖入目录，WorkspaceWatcher 热加载即上线，无需重启。',
       'An agent is a directory: AGENT.md = frontmatter (its profile) + a body of instructions, plus optional skills/ and scripts/. Create via REST, generate from one sentence with an LLM, or drop in a directory — WorkspaceWatcher makes it live with no restart.'
     ),
-    code: `.oryxos/agents/ops-agent/
+    code: `.aegisos/agents/ops-agent/
 ├── AGENT.md        # frontmatter + task body
 ├── skills/*.md     # on-demand sub-instructions
 └── scripts/        # on-demand shell scripts
@@ -60,15 +60,15 @@ provider:
     num: '04',
     title: t('分层记忆系统', 'Layered Memory System'),
     desc: t(
-      '会话记忆 + 按 Agent 的长期记忆（.oryxos/agents/<name>/MEMORY.md，关键词检索、带时间戳）。自动注入每次 system prompt，Agent 跨会话保持一致，后续可无缝升级向量检索。',
-      'Session memory plus per-agent long-term memory (.oryxos/agents/<name>/MEMORY.md, keyword search, timestamped). Auto-injected into every system prompt so agents stay consistent across sessions — with a clear upgrade path to vector search.'
+      '会话记忆 + 按 Agent 的长期记忆（.aegisos/agents/<name>/MEMORY.md，关键词检索、带时间戳）。自动注入每次 system prompt，Agent 跨会话保持一致，后续可无缝升级向量检索。',
+      'Session memory plus per-agent long-term memory (.aegisos/agents/<name>/MEMORY.md, keyword search, timestamped). Auto-injected into every system prompt so agents stay consistent across sessions — with a clear upgrade path to vector search.'
     ),
     code: `# Agent saves a preference
 Tool: save_memory
 Input: {"content": "Weekly report goes out every Friday 5pm"}
 
 # Persisted per-agent, auto-injected next turn
-# .oryxos/agents/ops-agent/MEMORY.md
+# .aegisos/agents/ops-agent/MEMORY.md
 
 Tool: recall_memory
 Input: {"query": "user preferences"}`,
@@ -95,7 +95,7 @@ POST /api/v1/sandbox/whitelist/SHELL
       '/admin/ 控制台（Vue 3 + Vite，与官网同源风格）：Agent 管理与一句话生成、Provider / Notify 渠道 CRUD、定时任务、工作区文件浏览、记忆查看。审计表 llm_calls、tool_invocations 第一天就写入。',
       'A Vue 3 + Vite console at /admin/ (same theme as this site): agent management with one-sentence generation, Provider / Notify-channel CRUD, scheduled tasks, workspace file browser, and memory views. Audit tables llm_calls and tool_invocations are written from day one.'
     ),
-    code: `❯ oryxos serve --port 8080
+    code: `❯ aegisos serve --port 8080
 
 /api/v1/**     REST API (unified envelope)
 /admin/        Web admin console
@@ -142,7 +142,7 @@ const scenarios = computed(() => [
   {
     num: '08',
     title: t('多 Agent 协作', 'Multi-Agent Collaboration'),
-    desc: t('多个 Agent 共享同一个 OryxOS 实例，各自拥有独立的 Profile、工具和记忆。', 'Multiple agents share one OryxOS instance, each with its own profile, tools, and memory.'),
+    desc: t('多个 Agent 共享同一个 AegisOS 实例，各自拥有独立的 Profile、工具和记忆。', 'Multiple agents share one AegisOS instance, each with its own profile, tools, and memory.'),
   },
 ])
 
@@ -187,7 +187,7 @@ const flowColumns = computed(() => [
   {
     id: 'channels',
     label: t('接入渠道', 'Channels'),
-    nodes: ['CLI (oryxos chat)', 'REST API', 'Gateway (daemon)'],
+    nodes: ['CLI (aegisos chat)', 'REST API', 'Gateway (daemon)'],
     highlight: false,
   },
   {
@@ -229,8 +229,8 @@ const flowColumns = computed(() => [
 
         <p class="hero-sub">
           {{ t(
-            '你用一句自然语言发布任务 → OryxOS 把它拆解 → 组织一支 Agent 团队 → 分工协作 → 交付结果。今天：一句话定义一个 Agent，带记忆、24 个内置工具、MCP、Skill、定时与全链路审计，立刻上线。私有部署在你自己的 K8s 或服务器上，数据不出域——让每一家公司，都能用自然语言跑起来自己的 Agent。',
-            'Describe a task in one sentence → OryxOS decomposes it → assembles a team of agents → they collaborate → the result is delivered. Today: define an agent in one sentence — memory, 24 built-in tools, MCP, skills, scheduling, and a full audit trail included — and it goes live instantly. Self-hosted on your own K8s or servers, data stays home. So every company can run its own agents, in plain language.'
+            '你用一句自然语言发布任务 → AegisOS 把它拆解 → 组织一支 Agent 团队 → 分工协作 → 交付结果。今天：一句话定义一个 Agent，带记忆、24 个内置工具、MCP、Skill、定时与全链路审计，立刻上线。私有部署在你自己的 K8s 或服务器上，数据不出域——让每一家公司，都能用自然语言跑起来自己的 Agent。',
+            'Describe a task in one sentence → AegisOS decomposes it → assembles a team of agents → they collaborate → the result is delivered. Today: define an agent in one sentence — memory, 24 built-in tools, MCP, skills, scheduling, and a full audit trail included — and it goes live instantly. Self-hosted on your own K8s or servers, data stays home. So every company can run its own agents, in plain language.'
           ) }}
         </p>
 
@@ -239,7 +239,7 @@ const flowColumns = computed(() => [
             {{ t('快速开始', 'Get Started') }}
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h10M8 3l4 4-4 4"/></svg>
           </a>
-          <a class="btn-ghost" href="https://github.com/oryx-labs/oryxos" target="_blank" rel="noopener">
+          <a class="btn-ghost" href="https://github.com/aegis-labs/aegisos" target="_blank" rel="noopener">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.745 0 .268.18.58.688.482A10.019 10.019 0 0022 12c0-5.523-4.477-10-10-10z"/></svg>
             GitHub
           </a>
@@ -251,19 +251,19 @@ const flowColumns = computed(() => [
             <span class="dot dot-red"></span>
             <span class="dot dot-yellow"></span>
             <span class="dot dot-green"></span>
-            <span class="terminal-title">oryxos — bash</span>
+            <span class="terminal-title">aegisos — bash</span>
           </div>
           <div class="terminal-body">
             <div class="term-line">
               <span class="term-prompt">❯</span>
-              <span class="term-cmd">oryxos init</span>
+              <span class="term-cmd">aegisos init</span>
             </div>
-            <div class="term-output">✓ Workspace initialized at .oryxos/</div>
-            <div class="term-output dim">  agents/ · memory/ · sessions/ · logs/ · oryxos.db</div>
+            <div class="term-output">✓ Workspace initialized at .aegisos/</div>
+            <div class="term-output dim">  agents/ · memory/ · sessions/ · logs/ · aegisos.db</div>
             <div class="term-spacer"></div>
             <div class="term-line">
               <span class="term-prompt">❯</span>
-              <span class="term-cmd">oryxos chat --profile ops-agent</span>
+              <span class="term-cmd">aegisos chat --profile ops-agent</span>
             </div>
             <div class="term-output dim">Loaded profile: ops-agent (deepseek-chat)</div>
             <div class="term-output dim">Memory: 3 entries loaded from MEMORY.md</div>
@@ -330,7 +330,7 @@ const flowColumns = computed(() => [
         </div>
 
         <div class="arch-diagram">
-          <img :src="withBase('/images/architecture.svg')" alt="OryxOS Architecture" class="arch-img"/>
+          <img :src="withBase('/images/architecture.svg')" alt="AegisOS Architecture" class="arch-img"/>
         </div>
       </div>
     </section>
@@ -407,7 +407,7 @@ const flowColumns = computed(() => [
             <p class="cta-sub">{{ t('初始化工作区、配置 LLM Provider、开始对话。5 分钟搭起你的第一个 Agent，随时扩展到一群。', 'Initialize the workspace, configure an LLM provider, and start chatting. Your first agent in under 5 minutes — scale to a fleet whenever you\'re ready.') }}</p>
             <div class="cta-btns">
               <a class="btn-dark" :href="t('/zh/docs/what', '/docs/what')">{{ t('查看文档', 'Read the Docs') }}</a>
-              <a class="btn-dark-ghost" href="https://github.com/oryx-labs/oryxos" target="_blank" rel="noopener">GitHub</a>
+              <a class="btn-dark-ghost" href="https://github.com/aegis-labs/aegisos" target="_blank" rel="noopener">GitHub</a>
             </div>
           </div>
           <div class="cta-right">
@@ -418,16 +418,16 @@ const flowColumns = computed(() => [
                 <span class="dot dot-dark"></span>
               </div>
               <pre class="cta-code"><code><span class="code-comment"># 1. {{ t('初始化工作区', 'Initialize the workspace') }}</span>
-<span class="code-prompt">❯</span> oryxos init
+<span class="code-prompt">❯</span> aegisos init
 
 <span class="code-comment"># 2. {{ t('配置你的 LLM Provider', 'Configure your LLM provider') }}</span>
 <span class="code-prompt">❯</span> export DEEPSEEK_API_KEY=your-key-here
 
 <span class="code-comment"># 3. {{ t('启动你的第一个 Agent', 'Start your first agent') }}</span>
-<span class="code-prompt">❯</span> oryxos chat --profile ops-agent
+<span class="code-prompt">❯</span> aegisos chat --profile ops-agent
 
 <span class="code-comment"># {{ t('或启动 REST API 服务', 'Or launch the REST API') }}</span>
-<span class="code-prompt">❯</span> oryxos serve --port 8080</code></pre>
+<span class="code-prompt">❯</span> aegisos serve --port 8080</code></pre>
             </div>
           </div>
         </div>
@@ -438,12 +438,12 @@ const flowColumns = computed(() => [
     <footer class="footer">
       <div class="footer-inner">
         <div class="footer-brand">
-          <span class="footer-logo">Oryx<strong>OS</strong></span>
+          <span class="footer-logo">Aegis<strong>OS</strong></span>
           <span class="footer-tagline">{{ t('分布式 Agent Harness OS · 私有部署', 'Distributed Agent Harness OS · Self-hosted') }}</span>
         </div>
         <div class="footer-links">
           <a :href="t('/zh/docs/what', '/docs/what')" class="footer-link">{{ t('文档', 'Docs') }}</a>
-          <a href="https://github.com/oryx-labs/oryxos" target="_blank" rel="noopener" class="footer-link">GitHub</a>
+          <a href="https://github.com/aegis-labs/aegisos" target="_blank" rel="noopener" class="footer-link">GitHub</a>
         </div>
       </div>
     </footer>
