@@ -35,7 +35,26 @@ ProviderException 只携带安全 `ProviderFailure`，禁止异常 message、toS
 
 400/401/403/429/5xx 都不能借用 SDK 默认策略变成可重试；本次仅用户确认的临时网络/超时可重试。TLS 证书错误、错误 URL/DNS 配置不视为临时网络错误；无法判定时保守地不重试。连接拒绝/连接重置/读写超时等具体分类须有聚焦测试。
 
-`externalOutcome`：NOT_SENT（该逻辑请求尚无外呼）、RESPONDED（收到了上游响应）、UNKNOWN（可能已处理但无法确认）。后续尝试前审计失败时，综合前面尝试的事实，不能把整个逻辑请求标记 NOT_SENT。
+`ProviderFailure.externalOutcome` 表示当前逻辑请求全部尝试的综合确认状态：
+
+- NOT_SENT：当前逻辑请求尚未发起任何外部模型调用，例如请求校验被拒绝或第一次前置审计失败。
+- RESPONDED：至少一次尝试收到了完整上游响应，且不存在结果未确认的尝试或审计终态写入失败。
+- UNKNOWN：任意一次尝试已经发起外部调用，但因超时、断连等原因无法确认结果；或者任意一次外呼后的审计终态写入失败。
+
+汇总时 UNKNOWN 优先于 RESPONDED；只有整个逻辑请求没有发起过外部调用时，才允许返回 NOT_SENT。后续尝试收到响应，不能消除前一次尝试的不确定性；后续 begin 失败也不能覆盖此前已发生的外呼事实。
+
+该字段用于失败返回，不改变既定重试类别和次数。后续尝试成功且审计完成时仍返回 ModelResponse，前面尝试的记录继续保留。审计终态写入失败始终返回 AUDIT_UNAVAILABLE/UNKNOWN，并立即停止自动重试。
+
+请求级汇总必须覆盖以下验收场景：
+
+| 场景 | 最终错误 | externalOutcome |
+|---|---|---|
+| 第一次 begin 失败 | AUDIT_UNAVAILABLE | NOT_SENT |
+| 收到完整 401 响应，审计完成 | AUTHENTICATION_FAILED | RESPONDED |
+| 第一次超时，重试收到完整 401 响应 | AUTHENTICATION_FAILED | UNKNOWN |
+| 第一次超时，下一次 begin 失败 | AUDIT_UNAVAILABLE | UNKNOWN |
+| 收到成功响应，但 complete 失败 | AUDIT_UNAVAILABLE | UNKNOWN |
+| 多次超时后耗尽重试次数 | PROVIDER_TIMEOUT | UNKNOWN |
 
 ## 重试编排
 

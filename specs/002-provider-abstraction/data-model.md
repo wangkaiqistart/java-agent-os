@@ -64,7 +64,7 @@ stateDiagram-v2
 | 任一 complete 失败 | 已提交 STARTED 可能保留，终态未确认 | AUDIT_UNAVAILABLE/UNKNOWN，不返回普通成功，不重试 |
 | 进程在外呼附近退出 | STARTED 留存 | 重启不自动重放、不当成已失败或已成功 |
 
-网络超时/断连也可能已到达上游，返回 UNKNOWN；配置、拒绝及第一次前置审计失败可确定 NOT_SENT；获得上游响应则可确定已访问模型端点。审计事务不是外部幂等机制。
+单次尝试获得完整上游响应不代表整个逻辑请求均已确认；请求级 externalOutcome 按[接口契约](contracts/provider-api.md)汇总。任意未确认尝试或外呼后的审计终态写入失败，均使最终失败返回 UNKNOWN。审计事务不是外部幂等机制。
 
 ## 校验与安全
 
