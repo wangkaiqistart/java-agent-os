@@ -1,0 +1,4 @@
+interface:
+  display_name: "AegisOS 工程初始化"
+  short_description: "补齐 Java 多模块工程的日志监控、接口规范、质量门禁与安全检查"
+  default_prompt: "使用 $aegisos-init 为当前 AegisOS 工程补齐基础配置并验证，保留既有模块和未提交改动。"

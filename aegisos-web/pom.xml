@@ -9,10 +9,24 @@
     <artifactId>aegisos-web</artifactId>
     <name>AegisOS Web</name>
     <dependencies>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>4.10.5</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-core</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-provider</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-memory</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-tool</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-storage</artifactId><version>${project.version}</version></dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
     </dependencies>
 </project>

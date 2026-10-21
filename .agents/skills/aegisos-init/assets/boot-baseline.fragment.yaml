@@ -1,0 +1,35 @@
+# 合并参考：只把需要的字段并入实际 application.properties/yaml。
+# 不复制覆盖现有配置；须先添加 Boot Actuator 才能产生 health 端点。
+# HTTP/API 行为、日志过滤器和对应测试需要实现，单靠此片段不会自动具备。
+spring:
+  application:
+    name: aegisos
+
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8080}
+  max-http-request-header-size: 16KB
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+
+logging:
+  level:
+    root: INFO
+    com.aegisos: INFO
+
+# Boot >= 3.4 且实际版本已验证时，可增加 logging.structured.format.console: logstash。
+# Prometheus 用显式 metrics Profile 和独立 loopback 管理端口；dev 才启用 springdoc。
+# requestId / 普通 JSON 请求体大小及业务超时限制需要代码与边界测试，片段不暗示已生效。

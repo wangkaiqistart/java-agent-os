@@ -10,6 +10,11 @@
     <name>AegisOS Boot</name>
     <description>Runnable Spring Boot application for AegisOS</description>
     <dependencies>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.17</version>
+        </dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-core</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-provider</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-memory</artifactId><version>${project.version}</version></dependency>
@@ -21,6 +26,19 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>

@@ -6,14 +6,14 @@
 
 > Java 原生的企业级 Agent OS 运行时底座：私有部署、统一接入、可审计、可扩展。
 
-[![设计阶段](https://img.shields.io/badge/status-design%20phase-7c3aed)](docs/IndustryResearch.md)
+[![工程初始化](https://img.shields.io/badge/status-engineering%20baseline-7c3aed)](docs/engineering/initialization.md)
 [![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](docs/TechnicalSolution.md)
 [![Spring Boot 3.x](https://img.shields.io/badge/Spring%20Boot-3.x-6DB33F?logo=springboot&logoColor=white)](docs/TechnicalSolution.md)
 [![License: TBD](https://img.shields.io/badge/license-TBD-lightgrey)](#许可证)
 
 AegisOS 运行在企业自己的服务器、虚拟机或 Kubernetes 环境中，为多个业务 Agent 统一提供大模型调用、ReAct 推理、记忆、工具、渠道、定时任务、审计和 REST 接入能力。业务方通过 Agent 目录描述“做什么”和“怎么运行”，不需要为每个 Agent 重复编写后端服务。
 
-> 当前仓库处于设计准备阶段，尚未建立 Java 源码、Maven 工程、测试工程或可运行的构建命令。本文档中的命令属于规划接口，正式实现后需要以仓内配置和验证结果为准。
+> 当前已有 Java 21 / Spring Boot 3.5.10 / Maven 九模块工程及基础 HTTP、健康、日志与质量门禁。下述 Agent 核心能力仍为开发目标，业务 API 与 CLI 尚未实现。执行证据见[初始化报告](docs/engineering/initialization.md)。
 
 ## 为什么做 AegisOS
 
@@ -21,7 +21,7 @@ AegisOS 运行在企业自己的服务器、虚拟机或 Kubernetes 环境中，
 
 AegisOS 专注运行时，不承担可视化 Workflow 编排。Dify、Coze 等平台可以作为上层客户端，通过 REST API 调用 AegisOS。
 
-## 核心能力
+## 规划中的核心能力
 
 | 能力 | 说明 |
 | --- | --- |
@@ -100,7 +100,26 @@ US-4 Tool    ─┘
 
 核心阶段先交付运行时内核；多租户、SSO、RBAC、完整 Tool Policy、容器或 microVM Sandbox、向量记忆、流式响应、多渠道 IM、Web 管理台、完整审计查询、集群高可用和跨节点 Agent 协作属于后续扩展或社区共建。
 
-## 规划中的快速开始
+## 开发快速开始
+
+需要 Java 21 和 Maven 3.9.x，在仓库根执行：
+
+```bash
+mvn test
+mvn clean package
+java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar
+```
+
+默认仅监听 `127.0.0.1:8080`，健康检查为 `GET /actuator/health`。开发文档、可选本机 Prometheus、API 错误约定和 CI 门禁见[开发指南](docs/engineering/development.md)。
+
+```bash
+bash scripts/check.sh quality
+bash scripts/install-gitleaks.sh
+bash scripts/check.sh secrets
+bash scripts/check.sh dependencies
+```
+
+## 规划中的产品命令
 
 以下命令描述目标使用方式，当前尚未实现，不能作为现阶段的运行验证：
 
@@ -137,11 +156,13 @@ GET  /api/v1/health
 | [需求分析](docs/DemandAnalysis.md) | 功能需求、非功能需求、核心/扩展边界和验收目标。 |
 | [技术方案](docs/TechnicalSolution.md) | 架构、模块、数据、接口、Sandbox、Memory 和实施节奏。 |
 | [AI 编程指南](docs/AiProgrammingGuide.md) | Spec-Kit、User Story、实施依赖和增量开发方式。 |
+| [开发指南](docs/engineering/development.md) | 启动、Profile、API 约定、质量与安全门禁。 |
+| [初始化报告](docs/engineering/initialization.md) | 实际变更、测试证据和未完成验证。 |
 | [Agent 指南](AGENT.md) | 面向 AI Agent 的仓库协作约定和事实源读取方式。 |
 
 ## 当前状态与开发前置事项
 
-设计基线已经统一：技术方案和 AI 编程指南均按 14 个 Maven 模块；场景验收为三个端到端 Demo，Web Service 独立验收；Agent 配置通过运行时监听和每轮读取热加载；长期记忆默认使用 `MEMORY.md`，并支持 SQLite/Mem0；核心阶段内置 Tool 固定为 9 个。正式实现前仍需把这些设计落到源码、测试和可验证的构建命令中。
+当前工程按宪法维护九个 Maven 模块，设计资料中的十四模块尚未落地。Provider/ReAct 等业务应按对应 Spec Kit 功能逐步实现；工程初始化不表示业务验收或生产认证授权已完成。
 
 主体开发计划使用 Spec-Kit 生成 `constitution`、`spec`、`plan` 和 `tasks`，小型增量功能使用手动提示词配合已有代码。
 

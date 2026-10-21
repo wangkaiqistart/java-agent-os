@@ -4,7 +4,7 @@
 
 AegisOS 是一个基于 Java 的企业级 Agent OS 运行时底座，目标是部署在企业自己的服务器、虚拟机或 Kubernetes 环境中，为多个业务 Agent 统一提供模型调用、ReAct 推理、记忆、工具、渠道、调度、审计和 Web 接入能力。
 
-当前仓库处于设计准备阶段。仓库内目前只有 `docs/` 设计文档，没有 Java 源码、Maven 工程、测试工程或已验证的构建命令。文档中的命令、模块和接口在实现前都必须重新核对，不能当作已经存在的事实。
+当前仓库已建立 Java 21、Spring Boot 3.5.10、Maven 九模块骨架和工程基础设施。业务 Provider/ReAct/Memory/Tool 尚未实现；现有可运行能力及验证结果见 `docs/engineering/initialization.md`，开发命令见 `docs/engineering/development.md`。不得把长期设计当作已实现能力。
 
 ## 阅读顺序与事实源
 
@@ -14,8 +14,10 @@ AegisOS 是一个基于 Java 的企业级 Agent OS 运行时底座，目标是�
 2. `docs/DemandAnalysis.md`：功能需求、非功能需求、核心与扩展范围、验收目标。
 3. `docs/TechnicalSolution.md`：架构、模块、数据持久化、接口和技术决策。
 4. `docs/AiProgrammingGuide.md`：Spec-Kit、User Story 和实施顺序。
+5. `.specify/memory/constitution.md` 与活动功能的 spec/plan/tasks：当前治理契约和本次功能范围。
+6. `docs/engineering/development.md`：实际工程配置、质量检查和 API 基础约定。
 
-文档版本已统一到下方的项目基线。后续修改应同步更新四份设计文档，避免重新引入旧口径。
+设计资料包含长期演进内容；当前实现以宪法九模块、功能规格及源码为准。遇到十四模块等历史设计差异时先核实，不借工程初始化扩模块。后续改动按受影响范围同步文档。
 
 ## 项目边界
 
@@ -103,9 +105,9 @@ US-4 Tool    ─┘
 | 功能需求 | `docs/DemandAnalysis.md` | 已存在，设计资料 |
 | 技术架构 | `docs/TechnicalSolution.md` | 已存在，设计资料，含版本演进内容 |
 | AI 实施流程 | `docs/AiProgrammingGuide.md` | 已存在，设计资料，与技术方案按 14 个模块和 3 个 Demo 对齐 |
-| API、配置、数据库、消息缓存、环境域名、监控 | 待源码、配置和部署文件建立后读取 | 当前仓库暂无可验证事实源 |
+| 工程、API 基础、配置、监控 | 根/子模块 POM、web baseline、boot 配置和测试、`docs/engineering/` | 已有基础实现；无业务 API、数据库或生产部署验证 |
 
-当源码和配置建立后，优先从以下仓内事实源取值：`pom.xml`、各模块 `pom.xml`、`src/main`、`src/test`、数据库迁移脚本、`application*.yaml`、CI 配置、容器编排文件和部署文档。运行时配置中心、数据库、消息系统和监控平台的真值应以对应环境的受控读取结果为准，凭据只记录获取路径，不记录密钥内容。
+当源码和配置建立后，优先从以下仓内事实源取值：`pom.xml`、各模块 `pom.xml`、`src/main`、`src/test`、数据库迁移脚本、`application*.properties/yaml`、CI 配置、容器编排文件和部署文档。运行时配置中心、数据库、消息系统和监控平台的真值应以对应环境的受控读取结果为准，凭据只记录获取路径，不记录密钥内容。
 
 ## 修改和验证工作流
 
@@ -116,9 +118,22 @@ US-4 Tool    ─┘
 5. 代码改动完成后运行仓库中实际存在且已核对过的构建、测试和格式检查命令。
 6. 报告中分别说明代码验证、测试结果、文档结论和仍未验证的生产或外部依赖。
 
-## 已冻结的项目文档基线
+## 当前工程验证入口
 
-- 工程结构：技术方案第 10 章定义 14 个 Maven 模块，AI 编程指南按同一数量拆解。
+```bash
+mvn test
+mvn clean package
+bash scripts/check.sh quality        # 格式、测试、打包、SpotBugs
+bash scripts/install-gitleaks.sh     # 本地校验安装固定版本
+bash scripts/check.sh secrets        # 历史与工作目录
+bash scripts/check.sh dependencies   # 依赖漏洞；数据源失败也阻断
+```
+
+首次格式修复用 `mvn spotless:apply`，避免无关业务代码重排。`target/` 中已有历史 tracked 产物，普通构建会改写；不要随源码提交这些生成物，也不要未经授权删除历史。敏感配置仅通过环境或 CI Secrets 注入。
+
+## 设计资料基线（尚未完整实现）
+
+- 当前工程结构：宪法与根 POM 固定九个 Maven 模块；设计文档中的十四模块为后续设计口径，尚未落地。
 - 场景验收：三个每日自动运行的端到端 Demo（每日天气、每日科技日报、每日 GitHub 日报）；Web Service 单独作为功能验收，不编号为 Demo。
 - Agent 配置：`WorkspaceWatcher`、`AgentLoader` 和 `ContextLoader` 运行时监听并每轮重新读取，配置和绑定在下一轮生效，无需重启。
 - Memory：`LongTermMemoryStore` 核心阶段支持三档后端，`MarkdownMemoryStore`（`.aegisos/memory/MEMORY.md`）为默认，同时提供 SQLite 和 Mem0；上层统一使用 `MemoryService`。

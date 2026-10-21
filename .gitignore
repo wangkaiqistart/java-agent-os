@@ -1,0 +1,25 @@
+# Maven output and local tooling
+**/target/
+.tools/
+.DS_Store
+
+# Runtime state and local credentials
+.aegisos/
+.env
+.env.*
+!.env.example
+application-local.properties
+application-local.yml
+application-local.yaml
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Security reports may contain sensitive findings
+gitleaks-report*
