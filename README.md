@@ -98,6 +98,8 @@ provider:
 
 Java 调用入口：`ProviderService.chat(sessionId, request)` 与 `ProfileProviderService.chatProfile(sessionId, profileName, prompt)` 共用一个审计/重试实现。会话标识仅校验格式、用于追踪，不证明会话存在或已认证；旧 `chat(request)` 明确未关联，审计 `session_id=null`。
 
+首次阅读代码可按 [US1 Provider 代码阅读指南](docs/engineering/us1-provider-reading-guide.md) 从测试跟通配置、模型调用、有限重试与审计落库。
+
 ## 计划中的开发顺序
 
 ```text
