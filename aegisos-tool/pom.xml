@@ -9,6 +9,10 @@
     <artifactId>aegisos-tool</artifactId>
     <name>AegisOS Tool</name>
     <dependencies>
-        <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-core</artifactId><version>${project.version}</version></dependency>
+        <dependency>
+            <groupId>io.aegisos</groupId>
+            <artifactId>aegisos-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>

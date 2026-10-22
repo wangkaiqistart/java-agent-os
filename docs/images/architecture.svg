@@ -40,7 +40,7 @@
   <rect x="36" y="28" width="1368" height="112" rx="20" fill="url(#header)" filter="url(#shadow)"/>
   <text x="74" y="76" class="title">AegisOS</text>
   <text x="74" y="108" class="subtitle">Private Java Agent OS runtime · one service, many business agents</text>
-  <text x="1362" y="82" text-anchor="end" class="small" fill="#bfdbfe">JDK 21 · Spring Boot 3.x</text>
+  <text x="1362" y="82" text-anchor="end" class="small" fill="#bfdbfe">JDK 21 · Spring Boot 4.x</text>
   <text x="1362" y="108" text-anchor="end" class="small" fill="#bfdbfe">REST · CLI · Scheduler</text>
 
   <text x="72" y="180" class="section">TRIGGERS AND INTEGRATION</text>

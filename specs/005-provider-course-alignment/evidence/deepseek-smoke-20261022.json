@@ -1,0 +1,59 @@
+{
+  "smoke": {
+    "runId": "a1509c09-1c13-45ef-aae5-81c5d6cad720",
+    "startedAt": "2026-10-21T17:51:23.912418Z",
+    "status": "PASS",
+    "stage": "COMPLETE",
+    "reason": "OK",
+    "httpSendAttempts": 1,
+    "responseNonEmpty": true,
+    "auditVerified": true,
+    "reopenedAuditVerified": true,
+    "newAuditRows": 1,
+    "providerName": "deepseek-main",
+    "modelName": "deepseek-flash",
+    "sessionId": "pdf16-smoke-001",
+    "configurationFingerprint": "4519e8fc4076f0ca505a795d25f6a28d43548e3f84669a1257e05709b76a81c7",
+    "requestId": "7f32baa7-3883-4c6d-91e0-153b6a630589",
+    "completedAt": "2026-10-21T17:51:27.956784Z"
+  },
+  "execution": {
+    "command": "mvn -B -pl aegisos-boot -am -Preal-provider-smoke -Dit.test=ProviderSmokeIT clean verify",
+    "start": "2026-10-21T17:50:55.892729+00:00",
+    "end": "2026-10-21T17:51:28.069154+00:00",
+    "mavenExitCode": 0,
+    "verificationExitCode": 0,
+    "classification": "PASS:SINGLE_REQUEST_AND_AUDIT_VERIFIED",
+    "credentialLeaksDetected": 0,
+    "evidenceDirectory": ".tools/provider-course-005-evidence/real-smoke-20261022-015048",
+    "invocations": 1,
+    "automaticRetries": 0
+  },
+  "failsafeCounts": {
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "unitTests": {
+    "tests": 144,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "sourceSha256": {
+    "aegisos-boot/pom.xml": "51c537e9df398b3fd71a801361bb1ffc36ef1065d8d76aa53bfb7451c8c61695",
+    "aegisos-boot/src/test/java/com/aegisos/boot/provider/ProviderSmokeIT.java": "4aeb2e141423131d1ab069fc8563e229c1181c1b8cf0df150f9333f3422cd073",
+    "scripts/verify-provider-smoke.py": "ffeeca1affca7d5e6a97b2b787c3c7ff5d255279e093dcb33161576882bc13d1"
+  },
+  "finalSecretsScan": {
+    "command": "bash scripts/check.sh secrets",
+    "start": "2026-10-21T17:53:05.174678+00:00",
+    "end": "2026-10-21T17:53:09.955698+00:00",
+    "exitCode": 0,
+    "historyFindings": 0,
+    "worktreeFindings": 0
+  },
+  "courseTasksCompleted": 80,
+  "pythonVerifierTests": 13
+}

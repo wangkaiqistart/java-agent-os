@@ -2,8 +2,6 @@ package com.aegisos.boot;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.io.ByteArrayInputStream;
@@ -35,11 +33,22 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(EngineeringBaselineTest.TestEndpoints.class)
 @ExtendWith(OutputCaptureExtension.class)
 class EngineeringBaselineTest {
+  /** 工程回归使用独立新库，不能触碰个人工作区或偷偷迁移已有 V1。 */
+  @org.springframework.test.context.DynamicPropertySource
+  static void isolatedAudit(org.springframework.test.context.DynamicPropertyRegistry registry)
+      throws java.io.IOException {
+    var workspace = java.nio.file.Files.createTempDirectory("aegisos-baseline-");
+    registry.add("aegisos.audit.path", () -> workspace.resolve("audit.db").toString());
+    registry.add("aegisos.workspace-root", workspace::toString);
+  }
+
   @LocalServerPort private int port;
   @Autowired private ObjectMapper mapper;
   private final HttpClient client =

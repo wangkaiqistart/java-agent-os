@@ -23,7 +23,18 @@
         <java.version>21</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-boot.version>3.5.10</spring-boot.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
+        <kotlin.version>2.4.21</kotlin.version>
+        <okio.version>3.16.4</okio.version>
+        <sqlite.version>3.53.4.0</sqlite.version>
+        <hibernate.version>7.4.5.Final</hibernate.version>
+        <spring-boot.version>4.1.1</spring-boot.version>
+        <tomcat.version>11.0.27</tomcat.version>
+        <!-- 安全修复覆盖：本工程导入 Boot BOM，以下版本通过显式依赖管理生效。 -->
+        <log4j2.version>2.26.1</log4j2.version>
+        <commons-lang3.version>3.21.0</commons-lang3.version>
+        <springdoc.version>3.1.1</springdoc.version>
+        <swagger-ui.version>5.33.2</swagger-ui.version>
         <spotless.version>2.43.0</spotless.version>
         <google-java-format.version>1.24.0</google-java-format.version>
         <maven-surefire.version>3.5.2</maven-surefire.version>
@@ -32,12 +43,56 @@
     </properties>
     <dependencyManagement>
         <dependencies>
+            <!-- 先导入安全修复 BOM，确保其版本优先于后面的 Boot BOM。 -->
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j2.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Spring AI 的 Kotlin 运行库按安全修复版本统一收敛。 -->
+            <dependency><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-bom</artifactId><version>${kotlin.version}</version><type>pom</type><scope>import</scope></dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.ai</groupId><artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version><type>pom</type><scope>import</scope>
+            </dependency>
+            <!-- Okio 3.6 仍携带旧 Kotlin common metadata；现代 JVM 依赖消除旧归档。 -->
+            <dependency><groupId>com.squareup.okio</groupId><artifactId>okio</artifactId><version>${okio.version}</version></dependency>
+            <dependency><groupId>com.squareup.okio</groupId><artifactId>okio-jvm</artifactId><version>${okio.version}</version></dependency>
+            <dependency><groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId><version>${sqlite.version}</version></dependency>
+            <dependency><groupId>org.hibernate.orm</groupId><artifactId>hibernate-community-dialects</artifactId><version>${hibernate.version}</version></dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-el</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-websocket</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>swagger-ui</artifactId>
+                <version>${swagger-ui.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

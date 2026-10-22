@@ -8,12 +8,12 @@
 
 [![工程初始化](https://img.shields.io/badge/status-engineering%20baseline-7c3aed)](docs/engineering/initialization.md)
 [![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](docs/TechnicalSolution.md)
-[![Spring Boot 3.x](https://img.shields.io/badge/Spring%20Boot-3.x-6DB33F?logo=springboot&logoColor=white)](docs/TechnicalSolution.md)
+[![Spring Boot 4.x](https://img.shields.io/badge/Spring%20Boot-4.x-6DB33F?logo=springboot&logoColor=white)](docs/TechnicalSolution.md)
 [![License: TBD](https://img.shields.io/badge/license-TBD-lightgrey)](#许可证)
 
 AegisOS 运行在企业自己的服务器、虚拟机或 Kubernetes 环境中，为多个业务 Agent 统一提供大模型调用、ReAct 推理、记忆、工具、渠道、定时任务、审计和 REST 接入能力。业务方通过 Agent 目录描述“做什么”和“怎么运行”，不需要为每个 Agent 重复编写后端服务。
 
-> 当前已有 Java 21 / Spring Boot 3.5.10 / Maven 九模块工程及基础 HTTP、健康、日志与质量门禁。下述 Agent 核心能力仍为开发目标，业务 API 与 CLI 尚未实现。执行证据见[初始化报告](docs/engineering/initialization.md)。
+> 当前已有 Java 21 / Spring Boot 4.1.1 / Maven 九模块工程及基础 HTTP、健康、日志与质量门禁。Provider Java 能力已实现：显式选模型、有限重试、结构化 Tool 响应和 SQLite 持久审计；ReAct、Memory、Tool 执行、业务 API 与 CLI 尚未实现。原 US-1 依赖安全门禁曾于 2026-10-21 23:23 通过；本轮结果另见[课程补齐验证](specs/005-provider-course-alignment/validation.md)。Provider 的本地验证见[US-1 验证指南](specs/002-provider-abstraction/quickstart.md)。执行证据见[初始化报告](docs/engineering/initialization.md)，依赖修复与剩余风险见[依赖安全记录](docs/engineering/dependency-security.md)。
 
 ## 为什么做 AegisOS
 
@@ -21,17 +21,19 @@ AegisOS 运行在企业自己的服务器、虚拟机或 Kubernetes 环境中，
 
 AegisOS 专注运行时，不承担可视化 Workflow 编排。Dify、Coze 等平台可以作为上层客户端，通过 REST API 调用 AegisOS。
 
-## 规划中的核心能力
+## 核心能力与状态
 
 | 能力 | 说明 |
 | --- | --- |
-| Provider | 通过统一抽象接入 DeepSeek、通义、Kimi、OpenAI 等模型，Agent 不绑定具体厂商。 |
+| Provider（已实现） | OpenAI 兼容协议、显式 Provider/模型、独立 YAML Profile 与启动快照、可配置有限重试、会话关联及 V2 SQLite 逐次审计；schema 只翻译不执行。DeepSeek deepseek-flash 已通过一次真实单请求与持久审计验证。 |
 | ReAct Loop | 自主驱动“思考 → 调用工具 → 观察结果 → 继续推理”，直到返回最终结果。 |
 | Memory | 保存会话上下文和长期记忆，默认使用 `.aegisos/memory/MEMORY.md`，核心阶段同时支持 SQLite 和 Mem0 后端。 |
 | Tool | 提供 9 个内置工具（文件、Shell、HTTP、Memory、通知），并支持 MCP 和 Java `@Tool` 扩展。 |
 | Web Service | 通过 REST API 提供 Session、Agent 调用、Profile、Memory、Tool 和系统状态能力。 |
 
 ## 架构
+
+以下为目标架构；当前 Provider 可独立调用，不依赖其余业务组件。
 
 ![AegisOS architecture](docs/images/architecture.svg)
 
@@ -70,7 +72,8 @@ CLI / REST API / Scheduler
 .aegisos/
 ├── agents/
 │   └── <name>/
-│       ├── AGENT.md       # frontmatter 是 Profile，正文是任务指令
+│       ├── profile.yml    # 唯一运行配置，启动/重启加载
+│       ├── AGENT.md       # 任务指令；本轮不自动组装 Prompt
 │       ├── skills/        # 公共 Skill 的相对软连接
 │       ├── scripts/       # 可选脚本
 │       └── REFERENCE.md   # 可选参考资料
@@ -84,7 +87,16 @@ CLI / REST API / Scheduler
 └── USER.md                # 用户偏好 Bootstrap
 ```
 
-`AGENT.md` 的 frontmatter 派生为 Profile，正文进入 system prompt。Skill 的元数据可以进入上下文，Skill 正文、参考资料和脚本按需读取。Agent 目录是上下文来源，不是一个可执行 Tool。
+`profile.yml` 是运行配置的唯一来源，`AGENT.md` 保留任务指令。Profile、全局 Provider 和技能目录绑定均在启动/重启时生成不可变快照；本轮不读取指令/技能/脚本正文，不自动拼装 Prompt，也不执行通知或调度。技能只从 `skills/` 相对软连接派生，YAML 不允许 `skills:`；`notify_channels` 仅保存通知名称引用。
+
+```yaml
+name: course-smoke
+provider:
+  name: deepseek-main  # 必须存在于全局 Provider 配置
+  model: deepseek-flash  # 必须在该 Provider 的允许列表中
+```
+
+Java 调用入口：`ProviderService.chat(sessionId, request)` 与 `ProfileProviderService.chatProfile(sessionId, profileName, prompt)` 共用一个审计/重试实现。会话标识仅校验格式、用于追踪，不证明会话存在或已认证；旧 `chat(request)` 明确未关联，审计 `session_id=null`。
 
 ## 计划中的开发顺序
 
@@ -109,6 +121,8 @@ mvn test
 mvn clean package
 java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar
 ```
+
+已有 V1 审计库启动会返回 `MIGRATION_REQUIRED`，需停机、一致性备份后按[迁移指南](specs/005-provider-course-alignment/quickstart.md#旧库手工升级)手工升级；测试使用临时库，不改个人库。
 
 默认仅监听 `127.0.0.1:8080`，健康检查为 `GET /actuator/health`。开发文档、可选本机 Prometheus、API 错误约定和 CI 门禁见[开发指南](docs/engineering/development.md)。
 
@@ -158,11 +172,13 @@ GET  /api/v1/health
 | [AI 编程指南](docs/AiProgrammingGuide.md) | Spec-Kit、User Story、实施依赖和增量开发方式。 |
 | [开发指南](docs/engineering/development.md) | 启动、Profile、API 约定、质量与安全门禁。 |
 | [初始化报告](docs/engineering/initialization.md) | 实际变更、测试证据和未完成验证。 |
+| [Provider 课程补齐](specs/005-provider-course-alignment/quickstart.md) | Profile YAML、会话审计、离线迁移及默认关闭的 DeepSeek 冒烟；真实单次验收 PASS（2026-10-22）。 |
+| [Provider 开发与验证](specs/002-provider-abstraction/quickstart.md) | US-1 配置、Java 调用边界、本地测试和审计验证。 |
 | [Agent 指南](AGENT.md) | 面向 AI Agent 的仓库协作约定和事实源读取方式。 |
 
 ## 当前状态与开发前置事项
 
-当前工程按宪法维护九个 Maven 模块，设计资料中的十四模块尚未落地。Provider/ReAct 等业务应按对应 Spec Kit 功能逐步实现；工程初始化不表示业务验收或生产认证授权已完成。
+当前工程按宪法维护九个 Maven 模块，设计资料中的十四模块尚未落地。US-1 Provider 已提供 Java 接口和 SQLite 审计，开发/验证入口见 [Provider 指南](specs/002-provider-abstraction/quickstart.md)及[验证记录](specs/002-provider-abstraction/validation.md)。005 课程补齐已提供本地验证和显式 `real-provider-smoke` 入口；默认启动/test/package/quality/CI 不真实调用，D-02 已于 2026-10-22 通过真实单次请求、非空响应与重开审计验证；最终放行及当前门禁见本轮验证记录。具体进度以[本轮验证](specs/005-provider-course-alignment/validation.md)为准。ReAct 等能力按后续 Spec Kit 功能推进；本次真实验证限定于 DeepSeek 指定配置，不表示其他厂商或生产部署验收。
 
 主体开发计划使用 Spec-Kit 生成 `constitution`、`spec`、`plan` 和 `tasks`，小型增量功能使用手动提示词配合已有代码。
 

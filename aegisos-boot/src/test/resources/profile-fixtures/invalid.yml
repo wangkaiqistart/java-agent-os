@@ -1,0 +1,4 @@
+# skills 只从目录派生；此文件用于验证禁止双配置源。
+name: invalid-example
+provider: {name: p, model: m}
+skills: [not-allowed]

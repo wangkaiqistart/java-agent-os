@@ -23,3 +23,17 @@ application-local.yaml
 
 # Security reports may contain sensitive findings
 gitleaks-report*
+
+# Java 与编辑器临时产物
+*.class
+*.jar
+*.log
+Thumbs.db
+*.tmp
+*.swp
+.idea/
+.vscode/
+
+# Python 报告核验器缓存
+__pycache__/
+*.pyc

@@ -1,0 +1,5 @@
+# 无工具/温度元数据；消息与输出参数由一次固定测试提供。
+name: course-smoke
+provider:
+  name: deepseek-main
+  model: deepseek-flash

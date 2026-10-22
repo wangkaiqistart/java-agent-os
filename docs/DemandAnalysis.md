@@ -1,5 +1,8 @@
 # AegisOS 需求文档
 
+> **005 实施口径（2026-10-22）**：当前 Java 21 / 九 Maven 模块 / Boot 4.1.1 / Spring AI 2.0.1。运行配置唯一来自 Agent 目录的 `profile.yml`，全局连接与 Profile 仅启动/重启生效；AGENT.md 只承载任务指令。skills 从相对目录绑定派生，notify_channels 只为安全名称引用。会话标识仅用于 Provider 审计追踪，旧入口为空关联；V2 新增 success/error_message 且保留状态字段。实际实现与验证见[005 规格](../specs/005-provider-course-alignment/spec.md)和[本轮验证](../specs/005-provider-course-alignment/validation.md)。本文其余 ReAct/Memory/Tool/动态管理等为目标设计，当前未实现；DeepSeek 单次真实冒烟已于2026-10-22通过。
+
+
 > 本文档定义 AegisOS 项目的功能需求和非功能需求，作为后续技术方案设计、研发实施、测试验收的依据。本文档回答 **What**，不回答 **How**，How 在后续的技术方案中展开。前置阅读《项目篇 AegisOS 业界调研》，本文档基于调研得出的领域判断，不重复论证企业 Agent OS 领域的现状。
 
 ---
@@ -141,8 +144,8 @@ API 覆盖六类操作：
 
 | 术语 | 定义 |
 |------|------|
-| **Agent（智能体）** | 一个具象的业务智能体，定义本体是一个目录 `.aegisos/agents/<name>/`：`AGENT.md`（frontmatter 是运行配置、正文是任务指令）加可选 `skills/` 公共 Skill 软连接、`scripts/` 脚本、`REFERENCE.md` 参考。一个目录就是一个完整可用的业务 Agent，不是写代码写出来的 |
-| **Profile（配置）** | 底座内部的运行时宿主配置对象，决定一个 Agent"怎么跑"：绑定的 LLM Provider、可用 Tool 列表、Channel、Tool Policy 和定时规则。它不再是一份单独手写的 YAML——`AgentLoader.deriveProfile()` 把 `AGENT.md` 的 frontmatter 派生成 `Profile`；Skill 绑定由 Agent 本地 `skills/` 软连接集合独立表达 |
+| **Agent（智能体）** | 一个具象的业务智能体，定义本体是一个目录 `.aegisos/agents/<name>/`：`profile.yml`（运行配置）和 `AGENT.md`（任务指令）加可选 `skills/` 公共 Skill 软连接、`scripts/` 脚本、`REFERENCE.md` 参考。一个目录就是一个完整可用的业务 Agent，不是写代码写出来的 |
+| **Profile（配置）** | 底座内部的运行时宿主配置对象，决定一个 Agent"怎么跑"：绑定的 LLM Provider、可用 Tool 列表、Channel、Tool Policy 和定时规则。它由独立的 `profile.yml` 在启动时加载成不可变 `Profile`；Skill 绑定由 Agent 本地 `skills/` 软连接集合独立表达 |
 | **Provider（供应商）** | LLM API 服务的抽象，实现统一接口让 Agent 不感知具体调的是哪家模型 |
 | **ReAct 循环** | Agent 的核心工作机制，Reason + Act。LLM 思考是否调用工具，调用后看结果，再决定下一步，直到给出最终响应 |
 | **Tool（工具）** | Agent 可以调用的外部能力。内置 Tool 是 AegisOS 自带的（文件、Shell、HTTP、通知推送）；Plugin Tool 是业务方自己写的 |
@@ -230,12 +233,12 @@ aegisos init   # 在当前目录下创建 .aegisos/ 工作区
 
 ### 5.2 定义一个 Agent：AGENT.md
 
-一个目录 = 一个 Agent。`.aegisos/agents/<name>/AGENT.md` 由两部分组成：**frontmatter** 是这个 Agent 自己的 profile（用哪个 Provider/模型、能用哪些 Tool、绑定哪个 Channel、要不要定时），**正文**是任务指令。`AgentLoader.deriveProfile()` 把 frontmatter 派生成底座认识的 `Profile`。Agent 的 Skill 绑定不写进 frontmatter，而由同目录 `skills/` 下的相对软连接表达。
+一个目录 = 一个 Agent。`.aegisos/agents/<dir>/profile.yml` 是唯一运行配置，`AGENT.md` 保存任务指令。ProfileLoader 启动时安全解析配置，坏文件隔离，已能取得安全名称的同名候选全部剔除；Profile.name 可与目录名不同。skills 只由同目录 `skills/` 下受控相对软连接派生，不接受 YAML skills 键。notify_channels 只保存通知名称引用，其他执行行为留给后续规格。
 
-**AGENT.md frontmatter 结构：**
+**profile.yml 结构（运行元数据）：**
 
 ```yaml
-name: string                    # Agent 名（= 目录名）
+name: string                    # 安全且唯一的 Profile 名，可与目录名不同
 description: string             # 描述
 
 identity:
@@ -256,6 +259,9 @@ mcp_servers:
 channels:
   - name: string                # Channel 名称
     config: {}                  # Channel 配置
+
+notify_channels:
+  - string                      # 仅通知名称引用，不保存端点或凭据
 
 bootstrap:
   - string                      # Bootstrap 文件列表
@@ -282,7 +288,7 @@ aegisos profile delete <name>    # 删除 Agent（整个目录）
 
 Provider 是 LLM 调用的统一抽象。所有 LLM 调用通过 Provider 接口走，Agent 不感知具体调的是哪家。
 
-核心阶段直接基于 Spring AI Alibaba 的 `ChatClient` 实现。Spring AI Alibaba 已经做好了主流 LLM（DeepSeek、通义、文心、Kimi、智谱、混元、豆包、Anthropic、OpenAI 等）的 connector，AegisOS 把它们包装成 Provider，不重复造轮子。
+当前使用 Spring AI 2.0.1 的 OpenAiChatModel 直接调用 OpenAI 兼容协议，不装配 Tool 执行 Advisor；其他原生协议适配按后续规格验证。
 
 每个 Provider 实例配置：
 - `provider 名`（deepseek、qwen、kimi 等）
@@ -374,9 +380,9 @@ Tool 是 Agent 可以调用的外部能力。Agent 通过 LLM Function Calling �
 > **选择原则**：能用方式一就不用方式二，能用方式二就不用方式三。
 
 **零代码示例**：想做"每天早上推送昨日 GitHub PR 评审进度到 Slack"，只需：
-1. 建 `.aegisos/agents/daily-pr-digest/`，写一份 `AGENT.md`：frontmatter 声明 provider、`mcp_servers`、`schedules`，正文写任务指令
+1. 建 `.aegisos/agents/daily-pr-digest/`，写 profile.yml 声明 provider/mcp_servers/schedules，AGENT.md 另写任务指令
 2. 复用社区现成的 `github-mcp` 和 `slack-mcp`，配置在 `mcp_servers.yaml`
-3. 需要固定产出格式就在 Agent 的 `skills/` 下绑定对应公共 Skill；下一轮 prompt 自动出现其名称和描述，正文按需读取
+3. 需要固定产出格式就在 Agent 的 `skills/` 下绑定对应公共 Skill；重启后配置快照更新；后续上下文功能再将名称和描述纳入prompt，正文按需读取
 
 整个过程不写一行代码。
 
@@ -483,8 +489,8 @@ Session 是用户和 Agent 一次对话的上下文容器，包含起止时间�
 
 核心阶段做基础版：
 
-- 敏感配置通过**环境变量**注入或独立的本地配置文件加载，不明文写死在 `AGENT.md` frontmatter 里
-- Profile 里用 `${ENV_VAR}` 占位，加载时从环境变量解析
+- 敏感配置通过**环境变量**注入或独立的本地配置文件加载，不明文写死在 `profile.yml` 里
+- 全局凭据只用 credential-ref: env:NAME；Profile 仅 provider.name/model/temperature 三字段支持全值 `${ENV_VAR}`，启动时解析一次，不对其他正文展开
 - 配置加载时做基础校验（必填项、格式），缺失或非法时给出清晰报错
 
 完整的加密存储、密钥轮转、对接企业密钥管理系统（KMS、Vault）放在扩展阶段。
@@ -578,12 +584,12 @@ AegisOS 作为开源项目，需要一个独立的主页作为对外门面，讲
 
 ### 8.3 可运维性
 
-- 配置变更通过修改 `AGENT.md` frontmatter，`WorkspaceWatcher` 与 `ContextLoader` 运行时监听并每轮重新读取，下一轮即可生效，无需重启服务
+- 运行配置与技能绑定仅启动/重启加载为不可变快照，修改 profile.yml 后需重启；运行时监听和正文动态加载需后续独立规格
 - 支持物理机、虚拟机、Docker、Kubernetes 部署
 
 ### 8.4 兼容性
 
-- **JDK**：21 及以上（Spring Boot 3.x 要求）
+- **JDK**：21 及以上（项目基线要求）
 - **操作系统**：Linux 主流发行版（Ubuntu 22.04+、CentOS 8+、Debian 11+、Alibaba Cloud Linux 3、Rocky Linux）
 - **LLM 协议**：OpenAI 兼容协议是事实标准，只要 Provider 实现这套协议，AegisOS 就能直接接
 
@@ -618,10 +624,10 @@ AegisOS 作为开源项目，需要一个独立的主页作为对外门面，讲
 
 ```
 用户执行 aegisos profile create <name>
-  → AegisOS 在 .aegisos/agents/<name>/ 下创建 AGENT.md（最小模板）
-用户编辑 AGENT.md：frontmatter 配 Provider、Tool 列表、Channel、引用的 Skill，正文写任务指令
+  → 未来 CLI 在 .aegisos/agents/<name>/ 下创建 profile.yml 和 AGENT.md（最小模板）
+用户编辑 profile.yml 配 Provider/Tool/Channel 元数据，AGENT.md 写任务指令；skills 由目录绑定
 用户执行 aegisos chat --profile <name>
-  → AgentLoader.deriveProfile() 把 frontmatter 派生成 Profile
+  → ProfileLoader 在启动时从独立 profile.yml 加载 Profile 快照
   → 初始化 Provider 连接
   → 注册 Tool 到 Agent 工具池
   → ContextLoader 把 AGENT.md 正文、Bootstrap 文件、引用到的 Skill 正文加载到系统提示词
@@ -705,19 +711,19 @@ Session 超时无消息 → 结束，对话历史归档可查
 | `duration_ms` | BIGINT | 执行耗时（毫秒） |
 | `created_at` | TIMESTAMP | 调用时间 |
 
-### LLM Call（记录每次 LLM 调用）
+### LLM Call（V2：记录每次模型调用）
 
 | 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | BIGINT | 主键 |
-| `session_id` | VARCHAR | 关联 Session |
-| `provider` | VARCHAR | Provider 名称 |
-| `model` | VARCHAR | 模型名 |
-| `prompt_tokens` | INT | 输入 token 数 |
-| `completion_tokens` | INT | 输出 token 数 |
-| `total_tokens` | INT | 总 token 数 |
-| `duration_ms` | BIGINT | 调用耗时（毫秒） |
-| `created_at` | TIMESTAMP | 调用时间 |
+| --- | --- | --- |
+| id / request_id / attempt_no | TEXT / TEXT / INTEGER | 行UUID、逻辑请求UUID、外呼1起/本地拒绝0 |
+| session_id | nullable TEXT | 新入口受限格式追踪值；旧入口和历史为空，不建会话FK |
+| provider_name / model_name | nullable TEXT | 已注册/允许的安全身份 |
+| status / success | TEXT / nullable BOOLEAN | STARTED→null；SUCCEEDED→true；FAILED/REJECTED→false |
+| error_code / error_message | nullable TEXT | 既有类别与固定安全说明，不保存厂商异常 |
+| input_tokens / output_tokens / total_tokens | nullable INTEGER | 64位用量，未知不补零 |
+| created_at / completed_at / duration_ms / retryable | 时间/耗时/布尔 | 逐尝试审计；begin/complete 独立提交 |
+
+新空库初始化 V2，已有 V1 不自动升级，必须停机、一致性备份、手工迁移。完整 DDL 与兼容规则见[审计契约](../specs/005-provider-course-alignment/contracts/audit-storage.md)。这不等于会话持久化已交付。
 
 ---
 
@@ -735,7 +741,7 @@ AegisOS 核心功能的实施按 **4 周节奏**组织，每周 3 小时，合�
 ### 各周详细实施内容
 
 **第一周**（3 小时）：对接 LLM + ReAct 循环
-- `aegisos init` 工作区初始化、`AGENT.md` frontmatter 解析
+- `aegisos init` 工作区初始化、`profile.yml` 解析
 - Provider 抽象（基于 Spring AI Alibaba，先跑通 DeepSeek 或 Kimi）
 - ReAct 循环（核心循环约数十行 Java，含 LLM 调用、Tool 调用解析、消息累积）
 - 一个基础内置 Tool（HTTP）、CLI Channel

@@ -1,6 +1,6 @@
 # US-1 验证指南
 
-**状态**：供实施完成后执行。本轮未实现以下能力，命令不是功能已通过的证据。
+**状态**：US-1 代码及测试已实现；依赖安全门禁于 2026-10-21 23:23 通过，T051 已完成，US-2 的 US-1 前置门禁已满足。本地执行结果见 [validation.md](validation.md)。以下命令可复现自动化验证，不要求真实模型凭证。
 
 ## 前置条件
 
@@ -13,9 +13,26 @@ mvn -version
 
 数据、错误、配置分别参照 [数据模型](data-model.md)、[Java 契约](contracts/provider-api.md)、[配置契约](contracts/provider-config.md)。US-1 无对外业务命令/HTTP 端点，不提供无法执行的 curl Demo。
 
+## 配置与 Java 调用
+
+生产配置键为 `aegisos.providers` 列表，字段见 [配置契约](contracts/provider-config.md)。默认列表为空，不创建默认 Provider，不探测模型。配置示例已注释在 `aegisos-boot/src/main/resources/application.properties`；可通过外部 properties 配置文件提供同名配置键。凭证只使用 `env:变量名`，启动时从操作系统环境读取一次；修改配置或环境后需重启。
+
+`base-url` 使用不含 `/v1` 或 `/chat/completions` 的 API 根地址，客户端仅追加一次 `/v1/chat/completions`。HTTPS 不允许 userInfo、查询参数或 fragment；仅显式 `test` profile 允许 loopback HTTP。未知协议、缺凭证、空/非法模型集合、非法数值或端点使该 Provider 不可用；无效/重复名称使启动失败，不回退。
+
+其他模块通过 `com.aegisos.core.provider.ProviderService` 调用：
+
+```java
+ModelResponse response = providerService.chat(
+    ModelRequest.text("deepseek-main", "deepseek-chat", "你好"));
+```
+
+这段调用会访问配置的模型，不属于默认构建或启动行为。US-1 只提供 Java 接口，不含业务 REST、对话 CLI 或 Agent Profile 加载。`ProviderException.failure()` 返回 requestId、稳定错误码、尝试次数和请求级 externalOutcome；不得在外层补做隐藏重试。Tool schema 只描述能力，返回的 ToolCall 交由后续 ReAct/Sandbox 功能处理。
+
+审计文件默认 `.aegisos/aegisos.db`，可设置 `aegisos.audit.path`；有限锁等待 `aegisos.audit.busy-timeout-ms` 默认 1000。首次启动执行 V001 SQL，后续校验版本；不用自动 DDL 或内存回退。每次尝试先提交 STARTED，返回后更新终态。begin 失败不外呼，complete 失败保留未确认记录并停止重试。重启不会重放 STARTED。
+
 ## 自动化验证命令
 
-以下测试类名称是计划约定；实施时必须创建相应测试，不能因类不存在而跳过验证。所有自动测试使用 `*Test` 命名，由 Surefire 执行；不要创建未接入 Failsafe 的 `*IT` 后声称已运行。
+以下测试类已接入 Surefire；不能因类不存在而跳过验证。所有自动测试使用 `*Test` 命名，由 Surefire 执行；不要创建未接入 Failsafe 的 `*IT` 后声称已运行。
 
 ```bash
 # 聚焦 provider/storage 的全部单元与本地集成测试，-am 构建依赖
@@ -58,4 +75,4 @@ HTTP stub 计数必须是真实收到的请求数，不能仅断言 mock adapter
 
 ## 完成判据
 
-三个规格故事全部通过；完整 Maven test/package 成功；提供真实测试数、stub 请求计数、SQLite 重开检查和敏感断言结果。任一门禁失败均不能声明 US-1 完成或让 US-2 开始依赖。本轮只交付计划与契约，不执行这些尚无实现的验收。
+三个规格故事全部通过；完整 Maven test/package 成功；提供真实测试数、stub 请求计数、SQLite 重开检查和敏感断言结果。任一门禁失败均不能声明 US-1 完成或让 US-2 开始依赖。真实厂商调用、CI 和部署不包含在本地测试结论内。

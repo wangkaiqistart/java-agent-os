@@ -1,6 +1,5 @@
 package com.aegisos.web.baseline;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -17,8 +16,9 @@ import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
-/** Bounds JSON bodies even when a client streams without Content-Length. */
+/** 在交给 MVC 前按字节限制 JSON 请求体；没有 Content-Length 的分块请求同样受限。 */
 public final class JsonBodyLimitFilter extends OncePerRequestFilter {
   private final ObjectMapper mapper;
   private final int maxBytes;
@@ -27,7 +27,8 @@ public final class JsonBodyLimitFilter extends OncePerRequestFilter {
     if (maxBytes < 1 || maxBytes > 1024 * 1024) {
       throw new IllegalArgumentException("JSON body limit must be between 1 byte and 1 MiB");
     }
-    this.mapper = mapper.copy();
+    // 保留 Boot 注册的 ProblemDetail 等映射模块，避免共享可关闭的 mapper 实例。
+    this.mapper = mapper.rebuild().build();
     this.maxBytes = maxBytes;
   }
 
@@ -45,6 +46,7 @@ public final class JsonBodyLimitFilter extends OncePerRequestFilter {
       chain.doFilter(request, response);
       return;
     }
+    // 最多多读一个字节以判定越界，不按不可信的 Content-Length 分配内存。
     byte[] body = request.getInputStream().readNBytes(maxBytes + 1);
     if (body.length > maxBytes) {
       response.setStatus(HttpStatus.PAYLOAD_TOO_LARGE.value());

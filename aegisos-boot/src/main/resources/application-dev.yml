@@ -1,0 +1,8 @@
+# 显式启用开发文档；监听地址仍继承默认的 loopback。
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    # 必须与根 POM 的 swagger-ui.version 一致，供 springdoc 定位静态资源。
+    version: 5.33.2

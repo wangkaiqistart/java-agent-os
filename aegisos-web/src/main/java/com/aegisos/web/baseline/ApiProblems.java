@@ -5,7 +5,7 @@ import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 
-/** Creates safe, stable errors; never pass upstream exception messages to this class. */
+/** 构造安全且稳定的错误响应；禁止传入上游异常消息，防止正文、SQL 或凭据泄露。 */
 final class ApiProblems {
   private ApiProblems() {}
 

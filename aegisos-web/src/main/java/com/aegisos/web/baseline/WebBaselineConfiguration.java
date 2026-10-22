@@ -1,13 +1,14 @@
 package com.aegisos.web.baseline;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
+import tools.jackson.databind.ObjectMapper;
 
+/** 显式装配兄弟模块的 Web 基础设施；请求关联必须先于大小限制，以保证 413 也有请求 ID。 */
 @Configuration(proxyBeanMethods = false)
 @Import(ApiExceptionHandler.class)
 public class WebBaselineConfiguration {

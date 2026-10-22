@@ -6,6 +6,8 @@
 
 **工作区事实**：活动功能由 `.specify/feature.json` 解析；当前 Git 分支为 `main`，尚未创建或切换同名功能分支。本次仅产出设计，不修改 POM/Java、不生成 `tasks.md`。
 
+**实施状态**：后续已按 tasks 落地，当前接口、配置和测试结果见 [validation.md](validation.md)；下文“本次仅设计”描述计划产出时的阶段。九模块与范围边界保持。
+
 ## 概要
 
 提供统一的 `ProviderService`，按 Provider 名称和模型名称显式路由。Spring AI 仅提供协议客户端，AegisOS 负责配置快照、错误分类、有限重试和逐次持久审计。每次外呼前必须提交审计记录；客户端关闭内部重试与自动 Tool 执行。US-1 不实现 ReAct、Memory、Tool 执行或 HTTP 业务端点。
@@ -16,9 +18,9 @@
 |---|---|
 | 语言与工具 | Java 21；本轮检查为 Zulu 21.0.9、Maven 3.9.14；无 Maven Wrapper |
 | 工程 | 九模块 Maven reactor；Java 包前缀 `com.aegisos`，Maven groupId 为 `io.aegisos` |
-| 框架 | 现有 Boot 3.3.5；计划升至 Boot 3.5.10，锁 Spring AI 1.1.2；Alibaba DashScope 扩展适配时使用 1.1.2.4-security-fix。已研究发布元数据/API，项目组合构建待实施验证 |
+| 框架 | 用户已批准迁移，当前工程为 Boot 4.1.1 / Framework 7.0.9 / Jackson 3.1.5；Spring AI 2.0.1 为待实施验证候选，其 OpenAI model 发布 POM 对齐 Framework 7.0.9。Alibaba 2.0.0-M1.1 尚为里程碑且依赖 AI 2.0.0-M1 / Boot 4.0.0，不在首批引入；旧 AI 1.1.2 / Alibaba 1.1.2.4-security-fix 组合不再适用 |
 | 模型客户端 | 首批实现 OpenAI 兼容适配器，支持 DeepSeek/Kimi 配置；本次不强制实现第二套协议 |
-| 存储 | 沿用 SQLite + Spring Data JPA；`llm_calls` 写入前置到 US-1。Hibernate core/community dialect 均锁 Boot 管理的 6.6.41.Final；SQLite JDBC 锁已发布的 3.53.4.0，组合兼容性由实施测试验证 |
+| 存储 | 沿用 SQLite + Spring Data JPA；`llm_calls` 写入前置到 US-1。Hibernate core/community dialect 必须保持同版，接入时核对当前 Boot BOM 管理版本，不回退至原研究的 6.6.41.Final；SQLite JDBC 3.53.4.0 为原候选，组合兼容性与安全性由实施测试验证 |
 | 测试 | JUnit Jupiter、Spring Boot Test、Mockito、本地 HTTP stub、临时 SQLite 文件；显式配置 Surefire 3.5.2 运行 `*Test`，防止旧默认插件漏跑 Jupiter |
 | 平台 | Java 21 单进程；开发支持 macOS/Linux，部署目标为 Linux |
 | 性能边界 | 规格无 QPS/延迟 SLA，不新增无依据指标；连接/读取均有正数超时，外呼不持数据库事务；真实请求次数最多 `maxRetries + 1` |

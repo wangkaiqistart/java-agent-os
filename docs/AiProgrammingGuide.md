@@ -1,5 +1,10 @@
 # AegisOS AI 编程指南
 
+> **005 实施口径（2026-10-22）**：当前 Java 21 / 九 Maven 模块 / Boot 4.1.1 / Spring AI 2.0.1。运行配置唯一来自 Agent 目录的 `profile.yml`，全局连接与 Profile 仅启动/重启生效；AGENT.md 只承载任务指令。skills 从相对目录绑定派生，notify_channels 只为安全名称引用。会话标识仅用于 Provider 审计追踪，旧入口为空关联；V2 新增 success/error_message 且保留状态字段。实际实现与验证见[005 规格](../specs/005-provider-course-alignment/spec.md)和[本轮验证](../specs/005-provider-course-alignment/validation.md)。本文其余 ReAct/Memory/Tool/动态管理等为目标设计，当前未实现；DeepSeek 单次真实冒烟已于2026-10-22通过。
+
+
+> 2026-10-21 工程基线更新：用户批准 Boot 4.1.1 / Framework 7.0.9，Java 21、九个已落地 Maven 模块保持不变。本文包含长期设计；当前实现与验证以 `pom.xml`、`docs/engineering/` 为准。Provider 首批计划采用 Spring AI 2.0.1 候选的 OpenAI 兼容适配器，Alibaba 原生协议扩展待后续验证，不能把规划能力视为已实现。
+
 > 本文档定义 AegisOS 的 AI 编程实施思路。主体思路是用 **Spec-Kit** 完成主体开发，把已有的需求文档和技术方案喂给 Spec-Kit，按五大核心能力拆成 5 个 user story 逐步实施；后续增量阶段切换到手动提示词配合 Claude Code。前置阅读《项目篇 AegisOS 业界调研》《AegisOS 需求文档》《AegisOS 技术方案》。本文档讲思路和拆解方法，不绑定具体时间安排，也不展开提示词细节。
 
 > 本文档以最新技术方案为准：核心阶段交付的是 Agent OS 的运行时内核，Maven 模块为 14 个（技术方案第 10 章），五大核心能力（对接 LLM、ReAct、Memory、Tool、Web Service）作为 5 个 user story 的骨架。
@@ -125,7 +130,7 @@ Claude Code 是主推的 AI agent，Spec-Kit 官方支持 Claude Code。具体�
 
 | # | 原则 | 说明 |
 |---|------|------|
-| 1 | JDK 21 + Spring Boot 3.x 单体应用 | Maven 多模块（14 个），单二进制部署 |
+| 1 | JDK 21 + Spring Boot 4.x 单体应用 | Maven 多模块（14 个），单二进制部署 |
 | 2 | 五大核心能力优先 | 核心阶段交付运行时内核，企业级治理层放扩展阶段 |
 | 3 | 自实现 ReAct loop | 不直接用 Spring AI 的 Agent 抽象 |
 | 4 | **Spring AI 只用一半** | 只用 Provider 抽象、协议转换、@Tool schema 生成；**禁用自动 tool 执行**；tool 调度完全由 `ReActLoop` + `ToolExecutor` 控制。**最容易被写错的一条** |
@@ -160,7 +165,7 @@ Claude Code 是主推的 AI agent，Spec-Kit 官方支持 Claude Code。具体�
 
 `/speckit.plan` 命令的输入是技术方案 + 上一步的 `spec.md` + `constitution.md`，输出是实施 plan。Plan 包含：
 
-- 技术栈选型（JDK 21 + Spring Boot 3.x + Spring AI Alibaba + SQLite + Picocli）
+- 技术栈选型（JDK 21 + Spring Boot 4.x + Spring AI Alibaba + SQLite + Picocli）
 - 14 个 Maven 模块的职责（对照技术方案第 10 章）
 - 关键技术决策的展开（自实现 ReAct、Spring AI 只用一半的边界、Plugin Tool 三档、SQLite + MEMORY.md、审计 day one 落库）
 - 数据流和模块间协作（`PromptBuilder` + `ProviderService` + `ToolExecutor` + `MemoryService` 三层门面）
@@ -246,8 +251,8 @@ US-1 实施完成后不立刻有 demo，因为它没有用户可见的入口，�
 | ReAct 循环类 | `ReActLoop` 主循环、`PromptBuilder`、`ToolExecutor`、`MAX_ITERATIONS` 控制 |
 | CLI Channel 类 | `CliChannel`、`aegisos chat` 命令、`aegisos init` 工作区初始化 |
 | 基础 Tool 类 | HTTP Tool、`SandboxChecker` 简化版（只校验 URL 白名单） |
-| Profile YAML 解析类 | SnakeYAML、Profile 校验 |
-| Session 类 | `Session` 数据结构、`SessionManager` 内存版（持久化放 US-5） |
+| Profile YAML 解析类 | 复用005已实现的boot安全加载器及core快照；不重新解析AGENT.md或引入热更新 |
+| Session 类 | 项目 US-2 按已澄清规格交付持久化与跨重启恢复；005 sessionId 仅为审计追踪，不提供会话存储 |
 
 **关键 task 颗粒度**：US-2 是 Spec-Kit 拆分的重点。几个需要拆细的复杂 task：
 - `ReActLoop` 主循环（核心循环逻辑精简约数十行 Java，但工程化部分如错误处理、日志、消息累积、迭代次数控制建议拆 2~3 个子 task）
@@ -308,7 +313,7 @@ US-3 实施完成后跑 `/speckit.analyze`。
 | 内置 Tool 补齐类 | 补齐 9 个内置 Tool：`read_file`、`write_file`、`list_dir`、`shell`、`http_get`、`http_post`、`save_memory`、`recall_memory`、`notify`；Shell/文件/HTTP 带白名单，`SandboxChecker` 完整实现 |
 | MCP Client 类 | `mcp_servers.yaml` 解析、`McpClientService` 启动时连接、`tools/list` 拉工具、`McpToolAdapter` 包装成 `AegisTool` |
 | `AGENT.md` 类 | `ContextLoader` 加载 `.aegisos/agents/` 下每个 Agent 的 `AGENT.md` 正文拼接到 system prompt，这部分归 core 不归 tool |
-| Agent 定义类 | `AgentLoader.deriveProfile` 从 `AGENT.md` frontmatter 派生 `Profile`（含 `tools` / `mcp_servers` 等字段） |
+| Agent 定义类 | boot 的 `ProfileLoader` 从独立 profile.yml 加载不可变 Profile（005 已实现；含 tools/mcp_servers 元数据，skills 来自目录绑定） |
 
 **关键 task 颗粒度**：US-4 的 task 数量较多，几个需要重点拆解的复杂 task：
 
@@ -508,3 +513,7 @@ US-1 → US-2 → ┌─ US-3 ─┐ → US-5
 **Spec-Kit 跟 AegisOS 的契合度很高**：纯 greenfield、medium 规模（14 个模块）、需求清晰、AI agent 协作、方法论场景，每条都对得上。
 
 **核心策略是已有文档喂给 Spec-Kit，不重写**。AegisOS 已经投入了完整的业界调研 + 需求文档 + 技术方案，这些是 Spec-Kit 的最佳输入。**关键是喂的是最新版文档**：模块是 14 个，验收是三个端到端 Demo，constitution 要包含"Spring AI 只用一半"、"审计 day one 落库"这些新决策，否则 Spec-Kit 生成的 plan 会按旧结构走偏。
+
+## 005 Provider 课程补齐的交付与后续入口
+
+当前功能目录 `specs/005-provider-course-alignment`。A/B/C 与 D 本地负例已完成本轮测试及构建；真实冒烟 D-02 已于2026-10-22通过一次真实发送/非空响应/成功审计和重开验证；当前质量/秘密/依赖门禁与最终任务状态见005 validation。不能覆盖002原51项任务和历史，不能把默认 package 的0真实外呼当作真实冒烟成功。后续项目 US-2 仍需其自身 Spec Kit 计划/任务及持久化验收。

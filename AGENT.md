@@ -4,7 +4,7 @@
 
 AegisOS 是一个基于 Java 的企业级 Agent OS 运行时底座，目标是部署在企业自己的服务器、虚拟机或 Kubernetes 环境中，为多个业务 Agent 统一提供模型调用、ReAct 推理、记忆、工具、渠道、调度、审计和 Web 接入能力。
 
-当前仓库已建立 Java 21、Spring Boot 3.5.10、Maven 九模块骨架和工程基础设施。业务 Provider/ReAct/Memory/Tool 尚未实现；现有可运行能力及验证结果见 `docs/engineering/initialization.md`，开发命令见 `docs/engineering/development.md`。不得把长期设计当作已实现能力。
+当前仓库已建立 Java 21、Spring Boot 4.1.1、Maven 九模块骨架和工程基础设施。US-1 Provider Java 接口、OpenAI 兼容协议和 SQLite 审计代码及测试已完成，依赖安全门禁已于 2026-10-21 23:23 通过，T051 已完成；验证见 `specs/002-provider-abstraction/validation.md`；ReAct/Memory/Tool 执行尚未实现；现有可运行能力及验证结果见 `docs/engineering/initialization.md`，开发命令见 `docs/engineering/development.md`，依赖修复与剩余风险见 `docs/engineering/dependency-security.md`。不得把长期设计当作已实现能力。
 
 ## 阅读顺序与事实源
 
@@ -25,8 +25,8 @@ AegisOS 是一个基于 Java 的企业级 Agent OS 运行时底座，目标是�
 
 核心阶段交付 Agent OS 的运行时内核，主要包括：
 
-- JDK 21、Spring Boot 3.x 单体应用和 Maven 多模块工程。
-- Provider 抽象，基于 Spring AI Alibaba 接入主流 LLM。
+- JDK 21、Spring Boot 4.x 单体应用和 Maven 多模块工程。
+- Provider 抽象，使用 Spring AI 协议客户端接入主流 LLM；首批 OpenAI 兼容适配器，Alibaba 原生协议能力按后续规格验证。
 - 自实现 ReAct 循环、Prompt 构建和 Tool 执行。
 - 会话记忆和长期记忆；默认使用 `.aegisos/memory/MEMORY.md`，核心阶段同时支持 SQLite 和 Mem0 后端。
 - 9 个内置 Tool：`read_file`、`write_file`、`list_dir`、`shell`、`http_get`、`http_post`、`save_memory`、`recall_memory`、`notify`。
@@ -65,7 +65,7 @@ CLI / REST API / Scheduler
  Session、Memory、审计数据持久化
 ```
 
-一个 Agent 由 `.aegisos/agents/<name>/AGENT.md` 定义：frontmatter 派生运行时 Profile，正文作为任务指令进入 system prompt；可选的 `skills/` 软连接、`scripts/` 和参考文件按需读取。Agent 目录是上下文来源，不是 Tool。
+一个 Agent 目录的运行配置唯一来自 `.aegisos/agents/<dir>/profile.yml`，`AGENT.md` 保留任务指令。本轮 boot 的 ProfileLoader 只在启动/重启加载安全 YAML 和目录技能绑定；core 保存不可变 Profile/Registry，provider 通过同一个 DefaultProviderService 暴露直接/配置调用入口。禁止解析 AGENT.md frontmatter、扫描 `.aegisos/profiles/` 或每请求读盘回退。技能正文/脚本/bootstrap/通知/调度本轮不读取或执行。
 
 ## 必须遵守的技术原则
 
@@ -105,7 +105,7 @@ US-4 Tool    ─┘
 | 功能需求 | `docs/DemandAnalysis.md` | 已存在，设计资料 |
 | 技术架构 | `docs/TechnicalSolution.md` | 已存在，设计资料，含版本演进内容 |
 | AI 实施流程 | `docs/AiProgrammingGuide.md` | 已存在，设计资料，与技术方案按 14 个模块和 3 个 Demo 对齐 |
-| 工程、API 基础、配置、监控 | 根/子模块 POM、web baseline、boot 配置和测试、`docs/engineering/` | 已有基础实现；无业务 API、数据库或生产部署验证 |
+| 工程、API 基础、配置、监控 | 根/子模块 POM、web baseline、boot 配置和测试、`docs/engineering/` | 已有基础实现及 US-1 SQLite 审计；无业务 API 或生产部署验证 |
 
 当源码和配置建立后，优先从以下仓内事实源取值：`pom.xml`、各模块 `pom.xml`、`src/main`、`src/test`、数据库迁移脚本、`application*.properties/yaml`、CI 配置、容器编排文件和部署文档。运行时配置中心、数据库、消息系统和监控平台的真值应以对应环境的受控读取结果为准，凭据只记录获取路径，不记录密钥内容。
 
@@ -135,6 +135,20 @@ bash scripts/check.sh dependencies   # 依赖漏洞；数据源失败也阻断
 
 - 当前工程结构：宪法与根 POM 固定九个 Maven 模块；设计文档中的十四模块为后续设计口径，尚未落地。
 - 场景验收：三个每日自动运行的端到端 Demo（每日天气、每日科技日报、每日 GitHub 日报）；Web Service 单独作为功能验收，不编号为 Demo。
-- Agent 配置：`WorkspaceWatcher`、`AgentLoader` 和 `ContextLoader` 运行时监听并每轮重新读取，配置和绑定在下一轮生效，无需重启。
+- Agent 配置：005 已批准独立 profile.yml 与启动/重启快照；技能只从相对目录绑定派生，notify_channels 是名称引用。WorkspaceWatcher/热更新属于未来设计，必须另立规格，不能覆盖当前快照。
 - Memory：`LongTermMemoryStore` 核心阶段支持三档后端，`MarkdownMemoryStore`（`.aegisos/memory/MEMORY.md`）为默认，同时提供 SQLite 和 Mem0；上层统一使用 `MemoryService`。
 - 内置 Tool：核心阶段固定 9 个，清单以 `docs/TechnicalSolution.md` 第 6.2 节为准。
+
+## 注意
+配置文件使用 yaml 格式 ，代码要有详细中文注释。
+
+测试模型使用 deepseek
+模型凭据仅通过 `DEEPSEEK_API_KEY` 环境变量或受控密钥存储提供，不在指南中填写。
+
+## Provider 课程补齐（005）事实边界
+
+- 原 002 的 51 项任务、validation.md 与 V001 保留为历史。新增证据仅写 `specs/005-provider-course-alignment/validation.md`。
+- `chat(sessionId, request)` 与 `chatProfile` 必须显式提供合法追踪值；不查会话表。旧入口 session_id=null。每次逻辑请求新 requestId，重试保持关联、attemptNo 递增。
+- V2 新增 session_id/success/error_message，保留 status/error_code。STARTED 的 success/error_message 均空，成功 true/空，失败及拒绝 false/固定安全说明。begin 提交前禁止外呼，complete 失败 UNKNOWN 且停止重试。
+- 新空库创建 V2；已有 V1 仅 MIGRATION_REQUIRED 拒绝，必须停机备份后离线手工迁移。不得在实现或测试中迁移个人库。
+- `real-provider-smoke` 只在 boot 显式启用，真实模型为 DeepSeek。默认构建/CI不外呼；缺条件、零发现、跳过或旧报告一律不能 PASS。D-02 已于2026-10-22通过一次DeepSeek真实请求/非空响应/成功审计及重开核验；最终任务与门禁以005 validation为准，不自动进入ReAct。

@@ -1,5 +1,10 @@
 # AegisOS 技术方案
 
+> **005 实施口径（2026-10-22）**：当前 Java 21 / 九 Maven 模块 / Boot 4.1.1 / Spring AI 2.0.1。运行配置唯一来自 Agent 目录的 `profile.yml`，全局连接与 Profile 仅启动/重启生效；AGENT.md 只承载任务指令。skills 从相对目录绑定派生，notify_channels 只为安全名称引用。会话标识仅用于 Provider 审计追踪，旧入口为空关联；V2 新增 success/error_message 且保留状态字段。实际实现与验证见[005 规格](../specs/005-provider-course-alignment/spec.md)和[本轮验证](../specs/005-provider-course-alignment/validation.md)。本文其余 ReAct/Memory/Tool/动态管理等为目标设计，当前未实现；DeepSeek 单次真实冒烟已于2026-10-22通过。
+
+
+> 2026-10-21 工程基线更新：用户批准 Boot 4.1.1 / Framework 7.0.9，Java 21、九个已落地 Maven 模块保持不变。本文包含长期设计；当前实现与验证以 `pom.xml`、`docs/engineering/` 为准。Provider 首批计划采用 Spring AI 2.0.1 候选的 OpenAI 兼容适配器，Alibaba 原生协议扩展待后续验证，不能把规划能力视为已实现。
+
 本文档定义 AegisOS 的技术方案，回答 How 的问题。前置阅读《项目篇 AegisOS 业界调研》和《AegisOS 需求文档》。本文档以需求文档定义的五大核心能力（对接 LLM、ReAct 循环、Memory 记忆、Plugin Tool、Web Service）为骨架展开，每个模块只给职责和功能说明，不展开代码细节。代码层面的实现细节在研发阶段补充。
 
 > 承接需求文档的定位判断：核心阶段交付的是 Agent OS 的运行时内核，能力上对齐业界开源 Agent OS 的基础层；让 AegisOS 成为真正企业级 Agent OS 的治理层（多租户、SSO、完整审计、Tool 治理）在扩展和社区阶段补齐。本技术方案只覆盖核心阶段的运行时内核，并在架构上为治理层预留扩展点。
@@ -12,9 +17,9 @@
 
 ## 1. 方案概述
 
-AegisOS 是一个 **Spring Boot 3.x** 单体应用，跑在 **JDK 21** 上，基于 **Spring AI Alibaba** 做 LLM 调用，自己实现 **ReAct loop** 作为 Agent 核心。整个 AegisOS 是一个可执行 JAR，单二进制部署，扩展阶段引入 **GraalVM Native Image** 进一步压缩启动时间和内存占用。
+AegisOS 是一个 **Spring Boot 4.x** 单体应用，跑在 **JDK 21** 上，基于 **Spring AI Alibaba** 做 LLM 调用，自己实现 **ReAct loop** 作为 Agent 核心。整个 AegisOS 是一个可执行 JAR，单二进制部署，扩展阶段引入 **GraalVM Native Image** 进一步压缩启动时间和内存占用。
 
-> **技术栈选型一句话总结**：JDK 21 + Spring Boot 3.x + Spring AI Alibaba + 自实现 ReAct loop + SQLite + Picocli 命令行。
+> **技术栈选型一句话总结**：JDK 21 + Spring Boot 4.x + Spring AI Alibaba + 自实现 ReAct loop + SQLite + Picocli 命令行。
 
 ### 1.1 关键技术决策
 
@@ -54,7 +59,7 @@ Tool 的实际调度和执行完全由 AegisOS 自己的 **`ReActLoop`** 加 **`
 
 AegisOS 的完整技术栈：
 
-1. **JDK 21** 加 **Spring Boot 3.x**（virtual thread 处理高并发）
+1. **JDK 21** 加 **Spring Boot 4.x**（virtual thread 处理高并发）
 2. **Spring AI** 加 **Spring AI Alibaba**（LLM Provider 抽象，复用现成的主流 LLM connector）
 3. 自实现 **ReAct loop**（Agent 核心循环）
 4. **Spring MVC**（HTTP API 服务层）
@@ -293,7 +298,7 @@ AegisOS 内部统一的 Tool 抽象接口。内置 Tool、`@Tool` 注解的 Plug
 
 AegisOS **主推**的接入方式。业务方不写代码，只写一个 Agent 目录描述要做的事，LLM 自己理解任务、自己组合调用 MCP 工具。
 
-定义一个 Agent = 写一个目录 `.aegisos/agents/<name>/`：`AGENT.md` = frontmatter（运行配置）加任务说明正文，外加可选的 `skills/` 公共 Skill 软连接、`scripts/*.py`、`REFERENCE.md`。一个目录就是一个自足的 Agent。
+定义一个 Agent = 写一个目录 `.aegisos/agents/<name>/`：`profile.yml` = 运行配置，`AGENT.md` = 任务说明正文，外加可选的 `skills/` 公共 Skill 软连接、`scripts/*.py`、`REFERENCE.md`。一个目录就是一个自足的 Agent。
 
 加载走三层渐进式披露：`AGENT.md` 正文常驻；当前 Agent 绑定 Skill 的 name/description/本地路径每轮注入；Skill 正文、参考与脚本经底座 `read_file`/`shell` 按需读取或运行。AegisOS 不解析任务步骤、不做工作流引擎。
 
@@ -383,7 +388,7 @@ NotifyTarget = { channelType: String, config: Map<String, String> }
 @Tool notify(content: String, channel: String = 默认渠道)
 ```
 
-`channel` 参数是通知渠道的全局注册名。通知渠道通过 Web 管理台或 `/api/v1/notify-channels` 做 CRUD，持久化在 SQLite 的 `notify_channels` 表；每项包含 `name`、`type`、`url` 和可选的 `description`，以及承载类型相关多字段的 `config`（webhook/feishu 等 HTTP 类继续用 `url`，email 用 `config` 的 host/port/from/to 等）。Agent 在 `AGENT.md` 正文中用自然语言按名引用渠道，LLM 调用时传 `channel` 和 `content`，`NotifyTools` 再从注册表解析适配器和 URL。具体 webhook 地址不进入对话，增加或修改渠道也无需改 Agent；`AGENT.md` frontmatter 不包含 `notify_channels` 字段。
+`channel` 参数是通知渠道的全局注册名。通知渠道通过 Web 管理台或 `/api/v1/notify-channels` 做 CRUD，持久化在 SQLite 的 `notify_channels` 表；每项包含 `name`、`type`、`url` 和可选的 `description`，以及承载类型相关多字段的 `config`（webhook/feishu 等 HTTP 类继续用 `url`，email 用 `config` 的 host/port/from/to 等）。Agent 在 `AGENT.md` 正文中用自然语言按名引用渠道，LLM 调用时传 `channel` 和 `content`，`NotifyTools` 再从注册表解析适配器和 URL。具体 webhook 地址不进入对话，增加或修改渠道也无需改 Agent；`profile.yml` 可声明 `notify_channels` 安全名称引用；本轮仅解析，不查询或发送通知。
 
 ![NotifyTools 设计：接口先行，核心阶段只实现 WebhookNotifyAdapter，扩展阶段新增专用渠道 Adapter](../website/public/images/docs-notify.svg)
 
@@ -436,7 +441,7 @@ Web Service 是 AegisOS 的对外完整门面，业务系统通过 REST API 接�
 
 ### 7.3 扩展阶段补齐的端点
 
-**`Agent` 目录的上传/查看/更新/删除**（业务方通过 API 而不是手动把目录丢进 `.aegisos/agents/` 来创建新 Agent，含一句话生成 `AGENT.md`，这才是"纯 API 定义一个新 Agent"的完整闭环）；Memory 的 append/clear/search；Tool describe 和调用历史；LLM call 历史和 token 统计；**`AgentScheduler` 的调度管理**（增删查改某个 Agent frontmatter 的 `schedules`，不用改文件重启进程）；Webhook 触发；SSE 流式响应；Prometheus metrics；OpenAPI spec。
+**`Agent` 目录的上传/查看/更新/删除**（业务方通过 API 而不是手动把目录丢进 `.aegisos/agents/` 来创建新 Agent，含一句话生成 `AGENT.md`，这才是"纯 API 定义一个新 Agent"的完整闭环）；Memory 的 append/clear/search；Tool describe 和调用历史；LLM call 历史和 token 统计；**`AgentScheduler` 的调度管理**（增删查改某个 Agent profile.yml 的 `schedules`，不用改文件重启进程）；Webhook 触发；SSE 流式响应；Prometheus metrics；OpenAPI spec。
 
 > **核心阶段为什么不做：** 核心阶段"定义一个 Agent"的路径是业务方手写一个 `.aegisos/agents/<name>/` 目录（`AGENT.md`[+ 脚本 / 子指令]），由 `WorkspaceWatcher`、`AgentLoader` 和 `ContextLoader` 运行时注册并热加载；Web Service 核心阶段的端点都只做查询，不做创建，这跟"业务系统通过 API 动态创建新 Agent"是两件事——后者需要 Agent 目录上传接口（含一句话生成）、`AgentScheduler` 的运行时增删接口一起补齐，缺了这条链路就不完整，所以放在同一批扩展阶段一起做，不拆开先做一半。
 
@@ -493,15 +498,15 @@ Web Service 是 AegisOS 的对外完整门面，业务系统通过 REST API 接�
 
 ### 8.2 Profile 配置
 
-**`AgentLoader` 模块。** 扫 `.aegisos/agents/` 各子目录，`deriveProfile` 把每个 `AGENT.md` 的 frontmatter 派生成一个 `Profile`，注册到 `ProfileRegistry`。启动时做合法性校验：Provider 是否存在、Tool 是否注册、Channel 是否支持、Bootstrap 文件是否存在。校验失败的 Agent 不阻断启动但记录错误日志。
+**当前实现：boot 的 ProfileLoader。** 只扫描 `.aegisos/agents/<dir>/profile.yml`；安全 YAML、环境引用和路径在 boot 处理，core 保存不可变领域对象及只读 ProfileRegistry。显式校验 Provider/允许模型；凭据暂缺不妨碍承载元数据，真正调用经审计拒绝。坏条目隔离，同名全部剔除，诊断不回显输入。无 AGENT.md frontmatter 或第二目录回退。
 
-**`ProfileRegistry` 模块。** Agent 派生 `Profile` 的内存索引，按 name 提供快速查找。Channel 接收消息时通过它拿到具体 Profile。派生自 `AGENT.md` frontmatter 的字段：`name`、`description`、`identity`（`agent_name`、`prompt`）、`provider`（`name`、`model`、`temperature`）、`tools`、`mcp_servers`、`channels`、`schedules`、`bootstrap`、`settings`（`max_iterations`、`max_history_turns`）。`notify_channels` 不属于 Profile 或 frontmatter；通知渠道由 SQLite 全局注册表管理，Agent 只在正文中按名称引用。核心阶段支持多个 Agent 并存，同一实例上同时可用，这是"OS"在核心阶段的最小体现。
+全字段包括 name、description、identity、provider、tools、目录派生 skills、mcp_servers、channels、notify_channels 名称引用、schedules、bootstrap 和 settings。除指定 Provider 三字段外不展开环境；本轮不查 Tool/Channel 注册表、不读取正文/Bootstrap，也不执行通知/MCP/调度。Profile 与技能绑定仅启动/重启加载，不提供运行时 register/remove。
 
 ### 8.3 上下文加载（Bootstrap + AGENT.md 正文）
 
 > **调整说明：** Bootstrap 与 `AGENT.md` 正文全量注入；Agent `skills/` 绑定的公共 Skill 每轮只注入 name/description/本地路径，正文与附属资源不预载，经 `read_file`/`shell` 按需取。
 
-**`ContextLoader` 模块。** 按 Profile 的 `bootstrap` 字段读取 Bootstrap，同时现读 Agent 自己 `AGENT.md` 正文；每次组装 prompt 时重新扫描 Agent `skills/` 的相对软连接，验证真实目标位于公共 Skill 根，只注入 Skill frontmatter 的 name/description 与 Agent 本地绝对读取路径。Skill 正文、脚本和参考不在这里预载，由模型经 `read_file`/`shell` 现取。全部无缓存，修改或重新绑定后下一轮立即生效。
+**`ContextLoader` 模块。** 按 Profile 的 `bootstrap` 字段读取 Bootstrap，同时现读 Agent 自己 `AGENT.md` 正文；后续组装 prompt 时消费已在启动时验证并冻结的 Agent `skills/` 绑定，只注入 Skill frontmatter 的 name/description 与 Agent 本地绝对读取路径。Skill 正文、脚本和参考不在这里预载，由模型经 `read_file`/`shell` 现取。这是后续上下文能力的目标设计；运行配置和技能绑定当前保持启动快照，变更需重启，不由 ContextLoader 每轮重载。
 
 ### 8.4 Channel 接入
 
@@ -529,7 +534,7 @@ Channel 是 Agent 对外的消息接入入口，主要解决"消息进来、响�
 - **契约在 core、实现在 storage**（依赖倒置）：`ScheduledTaskStore` 接口（`reconcile`/`retire`/`recordExecution`/`isEnabled`/`setEnabled`/`list`/`executions`）放 `aegisos-core`，`AgentScheduler` 依赖它；JPA 实现 `JpaScheduledTaskStore` 放 `aegisos-storage`。`reconcile(profileName, key, ...)` 为同一配置任务复用稳定 `scheduleId`，调度锁、启停、立即执行和历史均使用该 ID；删改 key 时旧记录退役而不删历史。
 - **v2 管理端点**（前缀 `/api/v2`）：`GET /schedules`、`GET /schedules/{scheduleId}/executions`、`POST /schedules/{scheduleId}/run`、`PUT /schedules/{scheduleId}`，以及按定义精确定位的 `POST /agents/{profileName}/schedules/{key}/run`。管理台只调用 v2；v1 仍可按旧 key 兼容，但当多个 Agent 使用同一 key 时返回 HTTP 409，绝不再静默选择第一条。
 
-**核心阶段 vs 扩展阶段的边界。** 核心阶段的 `schedules` **定义**写在 `AGENT.md` frontmatter 里，由 `WorkspaceWatcher` 监听目录变更并即时重新注册；改 cron / 新增任务在运行时生效，无需重启。第 28 节补齐的是任务的**状态持久化与运行控制**（查看 / 执行历史 / 立即执行 / 启用停用），不含通过 API 增删改 cron 定义。"业务方通过 Web Service 上传一个 Agent 目录（`AGENT.md` 带 `schedules` frontmatter）、由此定义一个新 Agent 并让它定时自动运行"这个完整闭环，依赖的是 7.3 里扩展阶段才补齐的两个能力——Agent 目录上传接口（含一句话生成）、`AgentScheduler` 的运行时增删接口——核心阶段这条链路靠手动丢目录即可走通，扩展阶段补上后才是纯 API 的闭环。
+**当前与未来边界。** `schedules` 定义写在 profile.yml，005 只在启动/重启时承载元数据，不注册调度。WorkspaceWatcher 和运行时即时重新注册为未来设计，需独立规格批准。第 28 节补齐的是任务的**状态持久化与运行控制**（查看 / 执行历史 / 立即执行 / 启用停用），不含通过 API 增删改 cron 定义。"业务方通过 Web Service 上传一个 Agent 目录（profile.yml 带 schedules 定义）、由此定义一个新 Agent 并让它定时自动运行"这个完整闭环，依赖的是 7.3 里扩展阶段才补齐的两个能力——Agent 目录上传接口（含一句话生成）、`AgentScheduler` 的运行时增删接口——核心阶段这条链路靠手动丢目录即可走通，扩展阶段补上后才是纯 API 的闭环。
 
 ### 8.6 三种运行模式
 
@@ -561,7 +566,7 @@ session list
 
 ### 8.8 配置与密钥加载
 
-**`ConfigLoader` 模块** 负责统一加载 LLM API key、Provider 凭证、MCP server 凭证等敏感配置。核心阶段做基础版：敏感配置通过环境变量注入或独立的本地配置文件加载，不明文写死在 Profile YAML 里（Profile 里用 `${ENV_VAR}` 占位，加载时从环境变量解析）；配置加载时做必填项和格式的基础校验，缺失或非法时给清晰报错。完整的加密存储、密钥轮转、对接企业 KMS/Vault 放扩展阶段。单列这个模块，是因为对企业级底座，配置和密钥的加载校验是 day one 该有的，不能散落各模块无人负责。
+**`ConfigLoader` 模块** 负责统一加载 LLM API key、Provider 凭证、MCP server 凭证等敏感配置。核心阶段做基础版：敏感配置通过环境变量注入或独立的本地配置文件加载，不明文写死在 Profile YAML 里（全局只保存 credential-ref: env:NAME；Profile 仅 provider.name/model/temperature 支持全值 `${ENV_VAR}` 并启动解析一次，凭据不进入 Profile）；配置加载时做必填项和格式的基础校验，缺失或非法时给清晰报错。完整的加密存储、密钥轮转、对接企业 KMS/Vault 放扩展阶段。单列这个模块，是因为对企业级底座，配置和密钥的加载校验是 day one 该有的，不能散落各模块无人负责。
 
 ---
 
@@ -585,9 +590,11 @@ session list
 
 ### 9.2 SQLite 关系型数据
 
+当前实际表为 llm_calls V2（新增 session_id/success/error_message，保留 status/error_code；用量 nullable 64位）。新入口 sessionId 仅追踪，旧入口为空；STARTED success/error_message 均空，成功 true/空，失败与拒绝 false/安全固定说明。requestId/attemptNo 不由 sessionId 替代。其他关系型表为后续设计。
+
 通过 Spring Data JPA 集成，`application.yaml` 配置数据源指向 `.aegisos/aegisos.db`。
 
-> **工程风险提示：** SQLite 本身 `ALTER TABLE` 能力有限，`hibernate.ddl-auto=update` 在 SQLite 上对表结构演进的支持很弱。核心阶段首次建表用 `update` 可以，但表结构后续演进时不要依赖 `update` 自动迁移，需要手动维护建表脚本或引入 Flyway/Liquibase。
+> **工程风险提示：** SQLite 本身 `ALTER TABLE` 能力有限，`hibernate.ddl-auto=update` 在 SQLite 上对表结构演进的支持很弱。当前严格使用 ddl-auto: none；空库事务创建 V2，V1/未知版本拒绝启动。V1 仅通过停机备份后的手工 SQL 升级，不使用自动 DDL。
 
 核心表五张：
 
@@ -694,13 +701,13 @@ mvn clean package
 **底座 / Agent 两层，分清楚。** 这是这一章最关键的一条：
 
 - **底座 = 系统基础能力**：Provider、ReAct、内置 Tool（`read_file`/`shell`/`http_get`/`notify`/`save_memory`…）、Memory、Sandbox、定时、Web（第 1~10 章）。所有 Agent 共享。
-- **Agent = 一个目录** `.aegisos/agents/<name>/`：`AGENT.md`（frontmatter = profile；正文 = 任务指令）+ 可选 `skills/` 公共 Skill 软连接、`scripts/`、`REFERENCE.md`。Agent 目录决定全部运行配置和可见资源。
+- **Agent = 一个目录** `.aegisos/agents/<name>/`：`profile.yml`（运行配置）+ `AGENT.md`（任务指令）+ 可选 `skills/` 公共 Skill 软连接、`scripts/`、`REFERENCE.md`。Agent 目录决定全部运行配置和可见资源。
 
 **借 Anthropic Agent Skills 的形态、但定义的是 Agent。** Anthropic 把这种目录叫一个 Skill（Claude 这个大 Agent 的一项可加载能力）；我们借的是目录的**形态**，不是命名——在 AegisOS，**一个目录 = 一个 Agent**。每个 Agent 独立自足，只调用底座的系统基础能力。
 
 > **宪章 v2.0.0 修订：公共实体与 Agent 绑定分离。** Skill 内容存 `.aegisos/skills/<name>/`；Agent 通过自身 `skills/<name>` 下的受控相对软连接选择可见集合。软连接集合是唯一绑定真相源，不再使用 frontmatter `skills:`。公共 CRUD 保留，但删除被引用 Skill 默认拒绝并返回引用 Agent。
 
-**派生 Profile**：底座（第 1~10 章的一切）都吃 `Profile`，所以 `AgentLoader.deriveProfile(agentDir)` 把 `AGENT.md` 的 frontmatter 映射成一个 `Profile`，让 Agent 目录**零改动复用整台底座**。
+**加载 Profile**：当前 boot 的 ProfileLoader 从独立 profile.yml 构造 core Profile 快照，provider 的 chatProfile 转为原 ModelRequest，共用唯一审计/有限重试循环。
 
 **渐进式披露（收进一个 Agent 内部）**：Agent 的**正文**在被触发时进 system prompt（它就是这个 Agent 的"人格 + 干什么"）；目录里的**子指令 / 参考 / 脚本不预载**，按正文指引**用底座既有能力按需取**——读子指令 / 参考用 `read_file`；在可信单机部署中，脚本可通过 `shell` 调用管理员显式白名单内的解释器。该操作以 AegisOS 进程的操作系统权限运行，不构成文件或网络隔离；不可信或多租户代码应使用未来基于容器/MicroVM 的 `execute_code` Runner。没有新工具、没有能力库、没有全局索引。
 
@@ -710,13 +717,15 @@ mvn clean package
 
 核心阶段走文件系统，一步到位：
 
-1. 在 `.aegisos/agents/<name>/` 放一个目录：至少一份 `AGENT.md`；需要 Skill 就在 `skills/` 创建指向公共实体的相对软连接，需要脚本则放 `scripts/`。
-2. 启动时 `AgentLoader` 扫 `.aegisos/agents/`，对每个目录 `deriveProfile` → `ProfileRegistry.register`；有 `schedules` 的交 `AgentScheduler`。
+1. 在 `.aegisos/agents/<name>/` 放一个目录：至少一份 `profile.yml`，任务指令另放 `AGENT.md`；需要 Skill 就在 `skills/` 创建指向公共实体的相对软连接，需要脚本则放 `scripts/`。
+2. 当前启动时 ProfileLoader 扫目录中的 profile.yml，批量校验后生成只读 ProfileRegistry；schedules 仅承载。
 3. 运行时：正文与已绑定 Skill 元数据进 system prompt，Skill 正文/参考/脚本按需经 `read_file`/`shell` 取用；`ContextLoader` 每次现扫、不缓存。
 
-配合运行时注册（11.3 的改造点在核心阶段就立好），新增 Agent 无需重启。
+当前新增/删除/修改 Agent 运行配置后需重启；11.3 的动态注册为未来能力，不覆盖005契约。
 
 ### 11.3 扩展阶段：`/api/v1/agents` + 一句话生成 + 实时监听 + 文件浏览器
+
+> 本节为未来设计；当前 ProfileRegistry 没有动态注册接口，也没有 WorkspaceWatcher。未来实现必须另立规格并决定与005启动快照的兼容关系，不能直接沿用下文的即时生效假设。
 
 业务系统 / 运营要完全通过 API 或页面管理、不摸文件系统。对外只有**一类资源——Agent**（一个目录）。`AgentLifecycleService`（在 26 节已有的 `AgentApiController` 上扩展）：
 
@@ -729,13 +738,13 @@ mvn clean package
 
 ![两条录入路径一段注册代码：API 上传 create() 与手工丢目录 WorkspaceWatcher 都汇到 register(agentDir)，deriveProfile + 注册 + 注册定时，免重启即上线](../website/public/images/docs-agent-lifecycle.svg)
 
-写完 Agent 目录后走的 `AgentLoader.deriveProfile → ProfileRegistry.register → AgentScheduler.registerProfile`，与启动扫描是**同一段代码**——保证"API 建的 Agent 和手工丢目录建的 Agent 行为一模一样"。`ProfileRegistry`（`register`/`remove`/`exists`）和 `AgentScheduler`（`registerProfile`/`unregisterProfile` + `scheduledTasks` 句柄表）的运行时注册方法在核心阶段（课程第 29 节）就已立好，本阶段直接调；`generate` 走既有 `ProviderService`（并落 `llm_calls` 审计）。
+写完 Agent 目录后走的 `AgentLoader.deriveProfile → ProfileRegistry.register → AgentScheduler.registerProfile`，与启动扫描是**同一段代码**——保证"API 建的 Agent 和手工丢目录建的 Agent 行为一模一样"。`ProfileRegistry`（`register`/`remove`/`exists`）和 `AgentScheduler`（`registerProfile`/`unregisterProfile` + `scheduledTasks` 句柄表）的运行时注册方法是未来设计，005尚未提供；未来须另立规格，不能把启动快照直接改为动态注册；`generate` 走既有 `ProviderService`（并落 `llm_calls` 审计）。
 
 **一个目录、两条录入路径 + 实时监听。** `.aegisos/agents/` 是**唯一真相源**，填充它两条路殊途同归：API 上传（校验 + 写 Agent 目录）、手工丢目录（scp/git/编辑器）。本阶段新增 `WorkspaceWatcher`（装配层一个守护线程，用 JDK `WatchService`；启动全量扫 + 之后实时监听 `.aegisos/agents/` 变更），**它是统一注册入口**：任何 Agent 目录新增/改/删都调 `AgentLifecycleService.register(agentDir)`（与 API 上传写完目录后调的是**同一个方法**）或注销。于是"上传即上线 = 丢目录即上线、全程免重启"。此外 `WorkspaceApiController` 提供**只读**的工作区文件浏览（`GET /workspace/tree` 列 Agent 目录树、`GET /workspace/file?path=` 读文件内容，**必做防目录穿越**：`normalize()` 后 `startsWith(root)` 校验），供管理台"工作区"页钻进一个 Agent 目录看它的 `AGENT.md`/脚本/子指令。
 
 ### 11.4 为什么这几件事要打包在一起交付
 
-单独做任何一件都拼不出"说一句话 / 调一次 API / 丢一个目录就上线一个会自动定时运行的新 Agent"这个闭环：少了目录写盘，派生不了 Profile；少了运行时注册，目录变更无法即时生效；少了定时注册，"会自己跑"是空话；少了一句话生成，运营还得手写 frontmatter。所以放在同一批一起交付，不拆开先做一半。
+单独做任何一件都拼不出"说一句话 / 调一次 API / 丢一个目录就上线一个会自动定时运行的新 Agent"这个闭环：少了目录写盘，派生不了 Profile；少了运行时注册，目录变更无法即时生效；少了定时注册，"会自己跑"是空话；少了一句话生成，运营还得手写 profile.yml。所以放在同一批一起交付，不拆开先做一半。
 
 ### 11.5 三个例子
 
@@ -753,7 +762,7 @@ mvn clean package
 
 **场景：** 每天早上 8 点，Agent 自动查天气、生成穿搭建议，推送到企业 IM 群，不需要人工发起。
 
-1. `AgentScheduler` 按 `AGENT.md` frontmatter 里 `schedules` 声明的 cron 表达式到点触发，生成一条消息，调 `AgentService.process`——跟 `CliChannel`/`ApiController` 调用的是同一个方法，`ReActLoop` 不感知这次触发是"钟推"
+1. `AgentScheduler` 按 `profile.yml` 里 `schedules` 声明的 cron 表达式到点触发，生成一条消息，调 `AgentService.process`——跟 `CliChannel`/`ApiController` 调用的是同一个方法，`ReActLoop` 不感知这次触发是"钟推"
 2. `ReActLoop` 第一轮，`PromptBuilder` 通过 `ContextLoader` 组装 system prompt（`AGENT.md` 正文即这个 Agent 的指令 + Bootstrap）
 3. `ProviderService` 调 DeepSeek，返回包含 `http_get` 的 Tool 调用
 4. `ToolExecutor` 执行，`HttpTools` 调用 `Sandbox.enforce(...)` 检查 URL 通过，拿到天气 JSON，并写 `tool_invocations`
@@ -784,7 +793,7 @@ mvn clean package
 
 **场景：** 每天早上 9:30，Agent 自动抓 GitHub 今日与本月热门项目、专挑 AI 相关做总结并推送。这个 Demo 演一个 Agent 目录里**捆绑一个脚本**：Agent 跑脚本拿确定性数据。
 
-1. 业务方**写一个带脚本的 Agent 目录** `.aegisos/agents/github-daily/`：`AGENT.md`（frontmatter：`tools:[github_daily, notify]` + 每天 09:30 的 `schedules`；正文"获取数据 → 组三段日报 → notify"）+ `scripts/github_trending.py`（免 token 用 GitHub Search API 按日期区间 + stars 近似 trending）；该脚本由 `github_daily` MCP 或专用 Tool 封装，而非交给通用 `shell`。
+1. 业务方**写一个带脚本的 Agent 目录** `.aegisos/agents/github-daily/`：`profile.yml`（tools 与 schedules 元数据）和 `AGENT.md`（任务指令"获取数据 → 组三段日报 → notify"）+ `scripts/github_trending.py`（免 token 用 GitHub Search API 按日期区间 + stars 近似 trending）；该脚本由 `github_daily` MCP 或专用 Tool 封装，而非交给通用 `shell`。
 2. 到点触发，`PromptBuilder` 注入 `AGENT.md` 正文
 3. LLM 按正文调 `github_daily` 获取 JSON；该 MCP 或专用 Tool 自己定义输入、脚本访问范围和网络策略，并通过 `ToolExecutor` 写 `tool_invocations`。**脚本产出的 JSON 进上下文、脚本代码不进**。
 4. LLM 用 JSON + 记忆偏好组织三段日报（今日 / 本月 / AI 重点），调 `notify` 推送
@@ -858,7 +867,7 @@ mvn clean package
 
 ## 15. 总结
 
-AegisOS 技术方案核心：**JDK 21 + Spring Boot 3.x** 单体应用，自实现 ReAct loop，基于 **Spring AI Alibaba** 做 LLM 调用（只用其协议转换和 schema 生成，不用其自动 tool 执行），SQLite 持久化加可插拔长期记忆后端（默认 `MEMORY.md`），Picocli 命令行。
+AegisOS 技术方案核心：**JDK 21 + Spring Boot 4.x** 单体应用，自实现 ReAct loop，基于 **Spring AI Alibaba** 做 LLM 调用（只用其协议转换和 schema 生成，不用其自动 tool 执行），SQLite 持久化加可插拔长期记忆后端（默认 `MEMORY.md`），Picocli 命令行。
 
 方案围绕五大核心能力展开：
 

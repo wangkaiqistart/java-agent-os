@@ -12,6 +12,9 @@ case "${1:-}" in
     if [[ -n "${NVD_API_KEY:-}" ]]; then
       scan_profiles=security,nvd-auth
     fi
+    if [[ -x "$PWD/.tools/dotnet/dotnet" ]]; then
+      export PATH="$PWD/.tools/dotnet:$PATH"
+    fi
     exec mvn -B package org.owasp:dependency-check-maven:aggregate -P"$scan_profiles"
     ;;
   secrets)

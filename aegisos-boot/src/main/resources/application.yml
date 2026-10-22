@@ -1,0 +1,89 @@
+# 默认仅监听本机；业务 Provider 列表默认为空，启动不探测外部模型。
+spring:
+  application:
+    name: aegisos
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    log-request-details: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  ai:
+    chat:
+      observations:
+        log-prompt: false
+        log-completion: false
+
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8080}
+  max-http-request-header-size: 16KB
+  tomcat:
+    connection-timeout: 5s
+    keep-alive-timeout: 20s
+    connection-upload-timeout: 5s
+    disable-upload-timeout: false
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+aegisos:
+  # workspace-root 可由受信任的部署配置指定；缺省为启动工作目录。
+  # 仅启动/重启扫描 .aegisos/agents/<dir>/profile.yml，AGENT.md 不提供运行配置。
+  # skills 由目录相对软连接派生；通知名称等仅作元数据，不触发执行。
+  http:
+    max-json-body-bytes: 32768
+  audit:
+    path: .aegisos/aegisos.db
+    busy-timeout-ms: 1000
+  # Provider 配置仅启动/重启加载。凭证填写引用，不填写真实密钥。
+  # providers:
+  #   - name: deepseek-main
+  #     adapter: openai-compatible
+  #     models: [deepseek-flash]
+  #     base-url: https://api.deepseek.com
+  #     credential-ref: env:DEEPSEEK_API_KEY
+  #     max-retries: 0
+  #     connect-timeout: 5s
+  #     read-timeout: 60s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      # Boot 4 默认开启探针分组；关闭后保持最小健康响应。
+      probes:
+        enabled: false
+
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    root: INFO
+    com.aegisos: INFO
+    # SDK、HTTP 和持久化实现禁止输出正文、认证头、SQL 参数或连接信息。
+    org.springframework.ai: "OFF"
+    com.openai: "OFF"
+    okhttp3: "OFF"
+    org.apache.hc.client5.http.wire: "OFF"
+    org.hibernate.SQL: "OFF"
+    org.hibernate.orm.jdbc.bind: "OFF"
+    org.hibernate.orm.connections.pooling: "OFF"
+    com.zaxxer.hikari: "OFF"
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

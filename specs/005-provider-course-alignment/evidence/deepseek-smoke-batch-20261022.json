@@ -1,0 +1,201 @@
+{
+  "description": "用户授权追加三轮 DeepSeek 真实冒烟；逐轮串行、每轮一次发送、零重试，失败即停止。",
+  "authorization": "本对话用户明确表示：冒烟可以多来几轮；执行前已告知本批次为三轮。",
+  "generatedAt": "2026-10-21T17:58:50.122221+00:00",
+  "rounds": [
+    {
+      "round": 1,
+      "smoke": {
+        "runId": "c761a71f-7a13-4b30-933b-ac9f75d0302c",
+        "startedAt": "2026-10-21T17:56:41.684697Z",
+        "status": "PASS",
+        "stage": "COMPLETE",
+        "reason": "OK",
+        "httpSendAttempts": 1,
+        "responseNonEmpty": true,
+        "auditVerified": true,
+        "reopenedAuditVerified": true,
+        "newAuditRows": 1,
+        "providerName": "deepseek-main",
+        "modelName": "deepseek-flash",
+        "sessionId": "pdf16-smoke-001",
+        "configurationFingerprint": "4519e8fc4076f0ca505a795d25f6a28d43548e3f84669a1257e05709b76a81c7",
+        "requestId": "b69e9f4e-6b5d-4202-91df-f6516cf5575c",
+        "completedAt": "2026-10-21T17:56:44.286161Z"
+      },
+      "execution": {
+        "command": "mvn -B -pl aegisos-boot -am -Preal-provider-smoke -Dit.test=ProviderSmokeIT clean verify",
+        "start": "2026-10-21T17:56:22.211024+00:00",
+        "end": "2026-10-21T17:56:44.356930+00:00",
+        "mavenExitCode": 0,
+        "verificationExitCode": 0,
+        "classification": "PASS:SINGLE_REQUEST_AND_AUDIT_VERIFIED",
+        "credentialLeaksDetected": 0,
+        "evidenceDirectory": ".tools/provider-course-005-evidence/real-smoke-20261022-015617",
+        "invocations": 1,
+        "automaticRetries": 0
+      },
+      "unitTests": {
+        "tests": 144,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failsafeCounts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "artifactSha256": {
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015617/command.json": "9107b55ea8bab86eb15c7393abf5b7c934030f10b524498b0394decde4d0ae6e",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015617/provider-smoke-result.json": "f538eb58ec1e4ba7f0527b57c24dc917c446bd8fcb94c5c4433fefab199a476f",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015617/verification.log": "3a868adf5788a2b68df7239a7b67ca00f040d0bcbd383c3c42af41b087a8dfc4",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015617/failsafe-reports/TEST-com.aegisos.boot.provider.ProviderSmokeIT.xml": "7b59fa9698c0bfed9cb08887fb2bc5058bccd7e529d17582a80f683479452669"
+      }
+    },
+    {
+      "round": 2,
+      "smoke": {
+        "runId": "d33951d9-fc80-4228-b041-a9c4bd87105e",
+        "startedAt": "2026-10-21T17:57:38.094176Z",
+        "status": "PASS",
+        "stage": "COMPLETE",
+        "reason": "OK",
+        "httpSendAttempts": 1,
+        "responseNonEmpty": true,
+        "auditVerified": true,
+        "reopenedAuditVerified": true,
+        "newAuditRows": 1,
+        "providerName": "deepseek-main",
+        "modelName": "deepseek-flash",
+        "sessionId": "pdf16-smoke-001",
+        "configurationFingerprint": "4519e8fc4076f0ca505a795d25f6a28d43548e3f84669a1257e05709b76a81c7",
+        "requestId": "a0da8a7a-a332-41b7-891d-4324c78225bb",
+        "completedAt": "2026-10-21T17:57:41.234090Z"
+      },
+      "execution": {
+        "command": "mvn -B -pl aegisos-boot -am -Preal-provider-smoke -Dit.test=ProviderSmokeIT clean verify",
+        "start": "2026-10-21T17:57:19.395990+00:00",
+        "end": "2026-10-21T17:57:41.323395+00:00",
+        "mavenExitCode": 0,
+        "verificationExitCode": 0,
+        "classification": "PASS:SINGLE_REQUEST_AND_AUDIT_VERIFIED",
+        "credentialLeaksDetected": 0,
+        "evidenceDirectory": ".tools/provider-course-005-evidence/real-smoke-20261022-015710",
+        "invocations": 1,
+        "automaticRetries": 0
+      },
+      "unitTests": {
+        "tests": 144,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failsafeCounts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "artifactSha256": {
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015710/command.json": "ee42c7ae6500fbb21ae142b9e5f18409c9444fd8ee3a19843f52ac408b3fe51e",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015710/provider-smoke-result.json": "c8496b8e11435a14e747d584d8fbc7e243f609e820b78c8c46c85baa31a2c4fe",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015710/verification.log": "3a868adf5788a2b68df7239a7b67ca00f040d0bcbd383c3c42af41b087a8dfc4",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015710/failsafe-reports/TEST-com.aegisos.boot.provider.ProviderSmokeIT.xml": "40413d7c25bc95e7ba73990311b10033ea582a6a003c45b5f8111fd019302974"
+      }
+    },
+    {
+      "round": 3,
+      "smoke": {
+        "runId": "1a3ae4d2-17f9-4219-b18c-01f83b60ba2e",
+        "startedAt": "2026-10-21T17:58:22.166156Z",
+        "status": "PASS",
+        "stage": "COMPLETE",
+        "reason": "OK",
+        "httpSendAttempts": 1,
+        "responseNonEmpty": true,
+        "auditVerified": true,
+        "reopenedAuditVerified": true,
+        "newAuditRows": 1,
+        "providerName": "deepseek-main",
+        "modelName": "deepseek-flash",
+        "sessionId": "pdf16-smoke-001",
+        "configurationFingerprint": "4519e8fc4076f0ca505a795d25f6a28d43548e3f84669a1257e05709b76a81c7",
+        "requestId": "c1ba3032-a649-457a-88a7-b45cca298135",
+        "completedAt": "2026-10-21T17:58:25.072541Z"
+      },
+      "execution": {
+        "command": "mvn -B -pl aegisos-boot -am -Preal-provider-smoke -Dit.test=ProviderSmokeIT clean verify",
+        "start": "2026-10-21T17:58:03.508188+00:00",
+        "end": "2026-10-21T17:58:25.224402+00:00",
+        "mavenExitCode": 0,
+        "verificationExitCode": 0,
+        "classification": "PASS:SINGLE_REQUEST_AND_AUDIT_VERIFIED",
+        "credentialLeaksDetected": 0,
+        "evidenceDirectory": ".tools/provider-course-005-evidence/real-smoke-20261022-015757",
+        "invocations": 1,
+        "automaticRetries": 0
+      },
+      "unitTests": {
+        "tests": 144,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failsafeCounts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "artifactSha256": {
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015757/command.json": "b758d6faff56f5725b6ca280b6566c1bca8bf9037fb3ab33740252806918a91d",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015757/provider-smoke-result.json": "67b72baafc537653156b87db29623434c50cdf9c03e373efc08585f61e30a2b7",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015757/verification.log": "3a868adf5788a2b68df7239a7b67ca00f040d0bcbd383c3c42af41b087a8dfc4",
+        ".tools/provider-course-005-evidence/real-smoke-20261022-015757/failsafe-reports/TEST-com.aegisos.boot.provider.ProviderSmokeIT.xml": "18bc20b5f334f082f44c64af5b8f917aad2c865d7b6cf0d68d9ab02bab1754f1"
+      }
+    }
+  ],
+  "summary": {
+    "status": "PASS",
+    "additionalRounds": 3,
+    "additionalHttpSendAttempts": 3,
+    "newAuditRowsAcrossIndependentTemporaryDatabases": 3,
+    "automaticRetries": 0,
+    "uniqueRunIds": 3,
+    "uniqueRequestIds": 3,
+    "previousSuccessfulRequests": 1,
+    "cumulativeSuccessfulRequests": 4
+  },
+  "sourceSha256": {
+    "aegisos-boot/pom.xml": "51c537e9df398b3fd71a801361bb1ffc36ef1065d8d76aa53bfb7451c8c61695",
+    "aegisos-boot/src/test/java/com/aegisos/boot/provider/ProviderSmokeIT.java": "4aeb2e141423131d1ab069fc8563e229c1181c1b8cf0df150f9333f3422cd073",
+    "scripts/verify-provider-smoke.py": "ffeeca1affca7d5e6a97b2b787c3c7ff5d255279e093dcb33161576882bc13d1"
+  },
+  "protectedFilesUnchanged": {
+    "specs/005-provider-course-alignment/tasks.md": true,
+    "aegisos-boot/pom.xml": true,
+    "aegisos-boot/src/test/java/com/aegisos/boot/provider/ProviderSmokeIT.java": true,
+    "scripts/verify-provider-smoke.py": true,
+    "specs/002-provider-abstraction/tasks.md": true,
+    "specs/002-provider-abstraction/validation.md": true,
+    "aegisos-storage/src/main/resources/db/schema/sqlite/V001__llm_calls.sql": true
+  },
+  "credentialHandling": "隐藏 stdin 输入，仅向本轮 Maven 子进程环境注入；不保存密钥或模型回复正文。",
+  "finalSecretsScan": {
+    "status": "PASS",
+    "command": "bash scripts/check.sh secrets",
+    "start": "2026-10-21T17:59:22.342264+00:00",
+    "end": "2026-10-21T17:59:28.645030+00:00",
+    "exitCode": 0,
+    "historyFindings": 0,
+    "worktreeFindings": 0,
+    "log": ".tools/provider-course-005-evidence/real-smoke-20261022-015757/batch-secrets-final.log"
+  },
+  "verificationNotes": [
+    "逐轮核验器均在本轮证据生成后立即执行，退出0；归档不作为后续新鲜证据重放。",
+    "validation.md仅追加本批次记录，原有字节前缀保持一致。",
+    "git diff --check退出0；005任务保持80项完成、0项待办。"
+  ]
+}

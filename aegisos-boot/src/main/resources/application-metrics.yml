@@ -1,0 +1,9 @@
+# 管理接口使用独立的本机端口，禁止直接暴露到公共网络。
+management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9091}
+    address: 127.0.0.1
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus

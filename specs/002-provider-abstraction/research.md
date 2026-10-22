@@ -4,17 +4,23 @@
 
 客户端研究与审计边界研究分别完成后合并。以下均为实施决策，尚未修改依赖或验证完整应用。
 
+## 2026-10-21 实施核实结果
+
+本文后续各节保留计划阶段研究。实施已通过 Spring AI 2.0.1 / OpenAI Java core 4.49.0 / Boot 4.1.1 / Hibernate 7.4.5.Final / SQLite JDBC 3.53.4.0 的本地编译和行为测试，证据见 [validation.md](validation.md)。真实厂商调用仍未执行。
+
+AI 2 的 ChatModel 同步路径不执行 Tool；不存在旧版 internalToolExecutionEnabled 开关。本项目不使用 ChatClient/Advisor，只传不可执行的 schema 描述。Spring AI 默认 HTTP 封装会启用连接重发，故明确注入 SDK ClientOptions（maxRetries=0、logLevel=OFF）与自有单次 HTTP 传输层（关闭连接重发/重定向、正数超时、无正文观测）。用量在内存按原生 nullable long 提取，避免 AI 2 的 int 转换或缺字段校验改变语义。未引入原生 Alibaba/DashScope 依赖。
+
 ## R1：兼容版本基线
 
-**决策**：Boot 3.3.5 升至 3.5.10，AI 锁 1.1.2；Alibaba DashScope 兼容版本为 1.1.2.4-security-fix，首批无原生协议需求时不引入其 model 包。先使用 `org.springframework.ai:spring-ai-openai` 对接 DeepSeek/Kimi。
+**2026-10-21 更新**：用户批准为修复 Framework 阻断漏洞迁移 Boot 4。当前工程基线为 Boot 4.1.1 / Framework 7.0.9 / Jackson 3.1.5。原 Boot 3.5.10 + Spring AI 1.1.2 组合不再作为实施目标。
 
-**理由**：Spring AI 1.0 官方支持 Boot 3.4/3.5；现有 3.3.5 不宜混搭稳定版。Alibaba 上述发布的 starter POM 对齐 Boot 3.5.10，model POM 对齐 AI 1.1.2/Framework 6.2.15，提供可追溯组合。仍在宪法 Boot 3.x 范围。
+**候选**：首批仍使用 `org.springframework.ai:spring-ai-openai` 对接 DeepSeek/Kimi，候选 Spring AI 2.0.1。已核实发布 POM：该 model 使用 Framework 7.0.9、Micrometer 1.17.1、`openai-java-core` 4.49.0。尚未引入 AI 依赖，不能将元数据对齐视为 Provider 集成验证通过。
 
-**备选**：Boot 3.4.8 + AI 1.0.1 + Alibaba 1.0.0.4 可核实但较旧；保留 Boot 3.3.5 并采用 milestone 增加维护负担。US-1 不引入 Alibaba Agent 框架。
+**Alibaba 边界**：公开发布的 2.0.0-M1.1 为里程碑版；starter 使用 Boot 4.0.0，model 使用 AI 2.0.0-M1 / Framework 7.0.1。首批无原生 DashScope 协议需求，不引入该组合。后续需原生能力时重新选择、收敛并验证，不回用 1.x 版本。
 
-**存储依赖锁定**：实时读取 Boot 3.5.10 BOM，Hibernate 为 6.6.41.Final，community dialect 同版发布 POM 返回 HTTP 200；SQLite JDBC 发布元数据当前 release 为 3.53.4.0，计划使用此版本。
+**存储候选**：Boot 4.1.1 BOM 管理 Hibernate 7.4.5.Final，community dialect 必须与 core 同版；SQLite JDBC 3.53.4.0 为原候选，实施前核对可用性与安全性。尚未引入数据库依赖，真实 SQLite/JPA 行为待实施测试。
 
-**验证限制**：核实发布元数据/API 不代表项目构建或漏洞扫描通过。实施时核对 effective POM/依赖收敛，并通过真实 SQLite/JPA 测试验证上述组合。
+**验证限制**：AI 2 的客户端、重试与工具 API 需重新读取源码及通过 HTTP stub 证明；原 1.1.2 源码结论仅可作为历史参考。
 
 ## R2：显式构造与纯 core 契约
 
@@ -26,11 +32,11 @@
 
 ## R3：关闭自动工具与底层重试
 
-**决策**：每次转换请求强制 `OpenAiChatOptions.builder().internalToolExecutionEnabled(false)`；扩展 DashScope 时使用同名选项。model builder 注入 `RetryTemplate.builder().maxAttempts(1).build()`，AegisOS 外层独占重试。Tool 只传 schema，不注册可执行回调；结构化调用返回调用方。
+**决策**：AegisOS 外层独占重试；所有 SDK 与传输层内部重试必须关闭，自动工具执行必须关闭。只传 Tool schema，不注册可执行回调；结构化调用返回调用方。每次外呼均先提交独立审计，配置 `maxRetries=N` 时真实 HTTP 尝试不得超过 `N+1`。
 
-**理由**：AI 1.1.2 源码默认 retry template 总尝试次数为 10，省略会绕过逐次审计和 N+1 上限。`maxAttempts=1` 是一次尝试，业务 `maxRetries=0` 是零次重试。仅临时网络与超时符合用户决策，不能采用 SDK 的宽泛分类。
+**迁移待验证**：旧 AI 1.1.2 的 `internalToolExecutionEnabled(false)` 与 `RetryTemplate.maxAttempts(1)` 是历史 API 方案。AI 2.0.1 OpenAI model 已改用官方 OpenAI Java 客户端，不能沿用旧 builder 配置并假定生效。T001/T002/T022 实施前须读取候选源码，确定工具开关、SDK 重试、OkHttp 重试和超时的实际配置 API，再用本地 HTTP stub 对失败与 Tool 响应验证零隐藏重试/零 Tool 执行。
 
-**备选**：只设全局 `spring.ai.retry.max-attempts=1` 不足以约束显式构造的 model。传输层也可能重发，须禁用该行为，并用本地 HTTP stub 实际请求数证明上限。
+**不变约束**：业务默认零重试，仅临时网络与超时符合用户允许的重试；不能用 SDK 的默认错误分类代替 AegisOS 契约，也不能以无法配置为由放宽审计门槛。
 
 ## R4：SQLite/JPA 与独立短事务
 
@@ -62,11 +68,11 @@
 
 **决策**：以宪法与当前 reactor 九模块为准，影响 core/provider/storage/boot 和根依赖管理。审计在 US-1 完成；测试使用本地 HTTP stub/SQLite/最小上下文，不依赖其他业务模块或真实凭证。
 
-**理由**：docs 的十四模块包含其他演进，AGENT.md 的工程状态已陈旧；不得以此扩模块或推迟审计。
+**理由**：docs 的十四模块包含其他演进，AGENT.md 已同步当前基线；不得以此扩模块或推迟审计。
 
 **备选**：真实厂商作为 CI 前提引入费用和非确定性；等 ReAct Demo 才验收 Provider 不满足独立故事测试。
 
-## 实时研究来源
+## 历史研究来源（1.x，不作为当前兼容性证明）
 
 - [Spring AI 支持的 Boot 版本](https://docs.spring.io/spring-ai/reference/1.0/getting-started.html)
 - [Alibaba starter 发布 POM](https://repo.maven.apache.org/maven2/com/alibaba/cloud/ai/spring-ai-alibaba-starter-dashscope/1.1.2.4-security-fix/spring-ai-alibaba-starter-dashscope-1.1.2.4-security-fix.pom)
@@ -78,4 +84,10 @@
 - [Hibernate SQLite 方言所属包](https://repo.maven.apache.org/maven2/org/hibernate/orm/hibernate-community-dialects/6.6.41.Final/hibernate-community-dialects-6.6.41.Final.pom)
 - [SQLite JDBC 发布元数据](https://repo.maven.apache.org/maven2/org/xerial/sqlite-jdbc/maven-metadata.xml)
 
-研究问题已收敛；真实厂商可用性、依赖组合编译与 HTTP 传输计数属于后续实施验证，不记为本轮已通过。
+## Boot 4 迁移核对来源
+
+- [Boot 4.1.1 BOM](https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-dependencies/4.1.1/spring-boot-dependencies-4.1.1.pom)
+- [Spring AI OpenAI 2.0.1 POM](https://repo.maven.apache.org/maven2/org/springframework/ai/spring-ai-openai/2.0.1/spring-ai-openai-2.0.1.pom)
+- [Alibaba 2.0.0-M1.1 model POM](https://repo.maven.apache.org/maven2/com/alibaba/cloud/ai/spring-ai-alibaba-dashscope/2.0.0-M1.1/spring-ai-alibaba-dashscope-2.0.0-M1.1.pom)
+
+真实厂商可用性、AI 2 SDK 配置、SQLite/JPA 组合编译与 HTTP 传输计数仍属于 US-1 实施验证，不记为本轮已通过。

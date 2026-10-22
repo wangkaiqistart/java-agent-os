@@ -1,8 +1,8 @@
 # Provider Java 接口契约
 
-**状态**：计划契约 | **归属**：`aegisos-core` | **字段**：[数据模型](../data-model.md)
+**状态**：已实现契约 | **归属**：`aegisos-core` | **字段**：[数据模型](../data-model.md)
 
-US-1 暴露供其他模块调用的 Java 能力，不新增 HTTP/CLI 业务入口。以下签名用于约束实现，不是已存在代码。
+US-1 暴露供其他模块调用的 Java 能力，不新增 HTTP/CLI 业务入口。以下签名已实现于 core；本地验证见 [validation.md](../validation.md)。
 
 ## ProviderService
 
@@ -20,7 +20,7 @@ ModelResponse chat(ModelRequest request) throws ProviderException;
 
 ## 安全错误
 
-ProviderException 只携带安全 `ProviderFailure`，禁止异常 message、toString 或日志沿用含正文/认证信息的上游原始异常。调用方不能依赖人类消息判断错误。
+ProviderException 只携带安全 `ProviderFailure`，禁止异常 message、toString 或日志沿用含正文/认证信息的上游原始异常。调用方不能依赖人类消息判断错误。审计与失败身份只回显已注册 Provider 及其允许模型，未知/未配置的身份置空，防止把误传的凭证当成合法格式标识保存。
 
 | code | 外呼 | 外层自动重试 |
 |---|---|---|

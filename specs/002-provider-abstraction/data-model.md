@@ -28,8 +28,8 @@
 | id | UUID 字符串 | 主键，每次尝试唯一 |
 | request_id | UUID 字符串 | 逻辑请求关联标识，非空 |
 | attempt_no | 非负整数 | 外呼从 1 开始，校验拒绝使用 0；唯一约束 `(request_id, attempt_no)` |
-| provider_name | 短字符串，可空 | 只保存通过格式验证的请求名称；缺失/不安全值为空 |
-| model_name | 短字符串，可空 | 同上；记录请求选择，不擅自改成厂商返回别名 |
+| provider_name | 短字符串，可空 | 只保存通过格式验证且已注册的请求名称；缺失、未知或不安全值为空 |
+| model_name | 短字符串，可空 | 同上且属于选定 Provider 的允许模型集合；记录请求选择，不擅自改成厂商返回别名 |
 | status | 枚举 | STARTED、SUCCEEDED、FAILED、REJECTED |
 | created_at | UTC 时间 | 非空；规范化 ISO-8601 文本保存 |
 | completed_at | UTC 时间，可空 | STARTED 为空，正常终态非空 |

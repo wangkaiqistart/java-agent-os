@@ -1,0 +1,11 @@
+# 仅测试入口显式激活；动态端口和临时数据库由测试注入。
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  ai:
+    chat:
+      observations:
+        log-prompt: false
+        log-completion: false

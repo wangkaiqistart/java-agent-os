@@ -1,0 +1,7 @@
+# 只供临时测试复制，不是默认加载来源。
+name: course-example
+provider: {name: p, model: m}
+identity: {agent_name: 示例助手, prompt: 仅保存元数据}
+tools: [lookup]
+notify_channels: [team]
+settings: {max_iterations: 10}

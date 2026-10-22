@@ -1,0 +1,14 @@
+# 仅由 AEGISOS_SMOKE_CONFIG 显式选取，默认启动/构建绝不加载。
+aegisos:
+  providers:
+    - name: deepseek-main
+      adapter: openai-compatible
+      models: [deepseek-flash]
+      base-url: https://api.deepseek.com
+      credential-ref: env:DEEPSEEK_API_KEY
+      max-retries: 0
+      connect-timeout: 5s
+      read-timeout: 60s
+smoke:
+  profile-name: course-smoke
+  session-id: pdf16-smoke-001

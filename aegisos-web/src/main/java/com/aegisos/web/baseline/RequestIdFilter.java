@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Correlates requests without logging their payload, URL, headers, or exception text. */
+/** 关联请求与日志；仅记录白名单元数据，不记录正文、URL、Header 或原始异常。 */
 public final class RequestIdFilter extends OncePerRequestFilter {
   public static final String HEADER = "X-Request-ID";
   public static final String ATTRIBUTE = RequestIdFilter.class.getName() + ".requestId";
@@ -47,6 +47,7 @@ public final class RequestIdFilter extends OncePerRequestFilter {
           .addKeyValue("status", response.getStatus())
           .addKeyValue("durationMs", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start))
           .log("HTTP request completed");
+      // 请求结束后恢复调用前的 MDC，避免线程复用或嵌套调用污染其他请求。
       if (previousId == null) {
         MDC.remove("requestId");
       } else {
