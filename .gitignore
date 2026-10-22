@@ -1,7 +1,9 @@
 # Maven output and local tooling
+# 忽略根目录及所有模块的 Maven 构建产物；已跟踪文件须先取消 Git 跟踪。
 **/target/
 .tools/
 .DS_Store
+**/*/target/
 
 # Runtime state and local credentials
 .aegisos/
@@ -37,3 +39,5 @@ Thumbs.db
 # Python 报告核验器缓存
 __pycache__/
 *.pyc
+
+**/*.jar

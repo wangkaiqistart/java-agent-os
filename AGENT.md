@@ -129,7 +129,7 @@ bash scripts/check.sh secrets        # 历史与工作目录
 bash scripts/check.sh dependencies   # 依赖漏洞；数据源失败也阻断
 ```
 
-首次格式修复用 `mvn spotless:apply`，避免无关业务代码重排。`target/` 中已有历史 tracked 产物，普通构建会改写；不要随源码提交这些生成物，也不要未经授权删除历史。敏感配置仅通过环境或 CI Secrets 注入。
+首次格式修复用 `mvn spotless:apply`，避免无关业务代码重排。根目录及各模块的 `target/` 由 `.gitignore` 统一忽略；构建产物仅保留在本地，不加入版本控制。敏感配置仅通过环境或 CI Secrets 注入。
 
 ## 设计资料基线（尚未完整实现）
 
