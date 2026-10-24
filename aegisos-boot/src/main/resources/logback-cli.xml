@@ -1,0 +1,14 @@
+<configuration>
+  <!-- CLI 的 stdout 仅允许一行结果 JSON。固定诊断不携带 SDK / SQL / 正文。 -->
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <encoder><pattern>%level %logger{36} - CLI_DIAGNOSTIC%n</pattern></encoder>
+  </appender>
+  <logger name="org.springframework.ai" level="OFF"/>
+  <logger name="com.openai" level="OFF"/>
+  <logger name="okhttp3" level="OFF"/>
+  <logger name="org.apache.hc" level="OFF"/>
+  <logger name="org.hibernate" level="OFF"/>
+  <logger name="com.zaxxer.hikari" level="OFF"/>
+  <root level="ERROR"><appender-ref ref="STDERR"/></root>
+</configuration>

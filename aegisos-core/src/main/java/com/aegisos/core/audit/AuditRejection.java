@@ -11,7 +11,18 @@ public record AuditRejection(
     String modelName,
     Instant createdAt,
     ProviderErrorCode errorCode,
-    String sessionId) {
+    String sessionId,
+    com.aegisos.core.provider.ProviderInvocation invocation) {
+  public AuditRejection(
+      UUID requestId,
+      String providerName,
+      String modelName,
+      Instant createdAt,
+      ProviderErrorCode errorCode,
+      String sessionId) {
+    this(requestId, providerName, modelName, createdAt, errorCode, sessionId, null);
+  }
+
   public AuditRejection(
       UUID requestId,
       String providerName,

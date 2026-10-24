@@ -71,7 +71,11 @@ class AuditSchemaMigrationTest {
     byte[] before = Files.readAllBytes(db());
     assertThatThrownBy(this::migrate).rootCause().hasMessageContaining("ALREADY_MIGRATED");
     assertThat(Files.readAllBytes(db())).isEqualTo(before);
-    AuditSchemaInitializer.initialize(new DriverManagerDataSource("jdbc:sqlite:" + db()));
+    assertThatThrownBy(
+            () ->
+                AuditSchemaInitializer.initialize(
+                    new DriverManagerDataSource("jdbc:sqlite:" + db())))
+        .hasMessage("MIGRATION_REQUIRED");
   }
 
   /** 已知 DDL 也可能有被绕过约束的坏行；复制失败必须回滚整个事务。 */

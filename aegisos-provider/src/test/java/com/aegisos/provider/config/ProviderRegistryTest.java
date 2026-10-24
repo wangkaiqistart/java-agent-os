@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class ProviderRegistryTest {
   ProviderRegistration named(HttpStub stub, String name) {
-    var old = ProviderFixtures.definition(stub, 0);
+    var old = ProviderFixtures.definition(stub, 0, java.time.Duration.ofSeconds(5));
     var d =
         new ProviderDefinition(
             name,

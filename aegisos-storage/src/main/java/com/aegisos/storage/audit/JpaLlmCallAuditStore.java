@@ -30,10 +30,17 @@ public final class JpaLlmCallAuditStore implements LlmCallAuditStore {
               SafeProviderMetadata.provider(s.providerName()),
               SafeProviderMetadata.model(s.modelName()),
               s.createdAt(),
-              SessionAssociation.safe(s.sessionId()));
+              SessionAssociation.safe(s.sessionId()),
+              s.invocation());
       var id = UUID.randomUUID();
-      tx.executeWithoutResult(status -> repository.insert(LlmCallEntity.started(id, safe)));
+      tx.executeWithoutResult(
+          status -> {
+            repository.link(safe.requestId(), safe.sessionId(), safe.invocation());
+            repository.insert(LlmCallEntity.started(id, safe));
+          });
       return new AuditHandle(id);
+    } catch (InvalidProviderInvocationException e) {
+      throw e;
     } catch (RuntimeException e) {
       throw new AuditUnavailableException();
     }
@@ -52,6 +59,8 @@ public final class JpaLlmCallAuditStore implements LlmCallAuditStore {
             int count = repository.complete(h, c);
             require(count == 1);
           });
+    } catch (InvalidProviderInvocationException e) {
+      throw e;
     } catch (RuntimeException e) {
       throw new AuditUnavailableException();
     }
@@ -69,8 +78,15 @@ public final class JpaLlmCallAuditStore implements LlmCallAuditStore {
               SafeProviderMetadata.model(r.modelName()),
               r.createdAt(),
               r.errorCode(),
-              SessionAssociation.safe(r.sessionId()));
-      tx.executeWithoutResult(status -> repository.insert(LlmCallEntity.rejected(safe)));
+              SessionAssociation.safe(r.sessionId()),
+              r.invocation());
+      tx.executeWithoutResult(
+          status -> {
+            repository.link(safe.requestId(), safe.sessionId(), safe.invocation());
+            repository.insert(LlmCallEntity.rejected(safe));
+          });
+    } catch (InvalidProviderInvocationException e) {
+      throw e;
     } catch (RuntimeException e) {
       throw new AuditUnavailableException();
     }

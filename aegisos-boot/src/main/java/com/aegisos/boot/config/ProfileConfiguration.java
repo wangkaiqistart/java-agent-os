@@ -17,6 +17,12 @@ public class ProfileConfiguration {
   }
 
   @Bean
+  public com.aegisos.core.context.AgentSourceRegistry agentSourceRegistry(
+      ProfileLoadReport report) {
+    return report.sources();
+  }
+
+  @Bean
   public ProfileRegistry profileRegistry(ProfileLoadReport report) {
     return new ProfileRegistry(report.profiles());
   }

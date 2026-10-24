@@ -1,0 +1,14 @@
+name: weather
+description: 手动查询天气并给出建议
+identity:
+  agent_name: 天气助手
+  prompt: 基于工具返回的实际天气事实给出简短中文建议。
+provider:
+  name: deepseek-main
+  model: deepseek-flash
+  temperature: 0.1
+tools: [http_get]
+bootstrap: []
+settings:
+  max_iterations: 10
+  max_history_turns: 20

@@ -18,6 +18,12 @@ public final class AuditSchemaInitializer {
 
   public static void initialize(DataSource ds) {
     try (var c = ds.getConnection()) {
+      try (var statement = c.createStatement()) {
+        statement.execute("PRAGMA foreign_keys=ON");
+        try (var result = statement.executeQuery("PRAGMA foreign_keys")) {
+          if (!result.next() || result.getInt(1) != 1) throw new AuditUnavailableException();
+        }
+      }
       var objects = new HashSet<String>();
       try (var s = c.createStatement();
           var r = s.executeQuery("SELECT name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'")) {
@@ -27,11 +33,11 @@ public final class AuditSchemaInitializer {
         c.setAutoCommit(false);
         try {
           ScriptUtils.executeSqlScript(
-              c, new ClassPathResource("db/schema/sqlite/V002__llm_calls.sql"));
+              c, new ClassPathResource("db/schema/sqlite/V003__react_runtime.sql"));
           try (var s = c.createStatement()) {
             s.execute(
                 "CREATE TABLE aegisos_schema(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL)");
-            s.execute("INSERT INTO aegisos_schema VALUES(1,2)");
+            s.execute("INSERT INTO aegisos_schema VALUES(1,3)");
           }
           c.commit();
         } catch (RuntimeException | SQLException e) {
@@ -46,8 +52,8 @@ public final class AuditSchemaInitializer {
           version = r.getInt(2);
           if (r.next()) throw new AuditUnavailableException();
         }
-        if (version == 1) throw new AuditMigrationRequiredException();
-        if (version != 2) throw new AuditUnavailableException();
+        if (version == 1 || version == 2) throw new AuditMigrationRequiredException();
+        if (version != 3) throw new AuditUnavailableException();
       }
       validate(c);
     } catch (AuditMigrationRequiredException e) {
@@ -61,7 +67,8 @@ public final class AuditSchemaInitializer {
   private static void validate(Connection c) throws Exception {
     String ddl;
     try (var in =
-        AuditSchemaInitializer.class.getResourceAsStream("/db/schema/sqlite/V002__llm_calls.sql")) {
+        AuditSchemaInitializer.class.getResourceAsStream(
+            "/db/schema/sqlite/V003__react_runtime.sql")) {
       if (in == null) throw new AuditUnavailableException();
       ddl = new String(in.readAllBytes(), StandardCharsets.UTF_8);
     }
@@ -71,8 +78,21 @@ public final class AuditSchemaInitializer {
     try (var s = c.createStatement();
         var r =
             s.executeQuery(
-                "SELECT sql FROM sqlite_master WHERE tbl_name='llm_calls' AND sql IS NOT NULL")) {
+                "SELECT sql FROM sqlite_master WHERE name<>'aegisos_schema' AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL")) {
       while (r.next()) actual.add(normalized(r.getString(1)));
+    }
+    try (var st = c.createStatement();
+        var rs = st.executeQuery("SELECT sql FROM sqlite_master WHERE name='aegisos_schema'")) {
+      if (!rs.next()
+          || !normalized(rs.getString(1))
+              .equals(
+                  normalized(
+                      "CREATE TABLE aegisos_schema(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL)")))
+        throw new AuditUnavailableException();
+    }
+    try (var st = c.createStatement();
+        var rs = st.executeQuery("PRAGMA foreign_key_check")) {
+      if (rs.next()) throw new AuditUnavailableException();
     }
     if (!expected.equals(actual)) throw new AuditUnavailableException();
     try (var s = c.createStatement();

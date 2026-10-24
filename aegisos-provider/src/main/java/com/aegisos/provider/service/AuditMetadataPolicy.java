@@ -25,13 +25,19 @@ public final class AuditMetadataPolicy {
   }
 
   public static AuditStart start(UUID id, long attempt, Identity identity, String session) {
+    return start(id, attempt, identity, session, null);
+  }
+
+  public static AuditStart start(
+      UUID id, long attempt, Identity identity, String session, ProviderInvocation invocation) {
     return new AuditStart(
         id,
         attempt,
         identity.providerName(),
         identity.modelName(),
         Instant.now(),
-        SessionAssociation.safe(session));
+        SessionAssociation.safe(session),
+        invocation);
   }
 
   public static AuditRejection rejection(UUID id, Identity identity, ProviderErrorCode code) {
@@ -40,12 +46,22 @@ public final class AuditMetadataPolicy {
 
   public static AuditRejection rejection(
       UUID id, Identity identity, ProviderErrorCode code, String session) {
+    return rejection(id, identity, code, session, null);
+  }
+
+  public static AuditRejection rejection(
+      UUID id,
+      Identity identity,
+      ProviderErrorCode code,
+      String session,
+      ProviderInvocation invocation) {
     return new AuditRejection(
         id,
         identity.providerName(),
         identity.modelName(),
         Instant.now(),
         code,
-        SessionAssociation.safe(session));
+        SessionAssociation.safe(session),
+        invocation);
   }
 }

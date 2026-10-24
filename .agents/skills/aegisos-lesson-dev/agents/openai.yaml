@@ -1,0 +1,4 @@
+interface:
+  display_name: "AegisOS 课程开发与交付复核"
+  short_description: "按课程推进 Spec-Kit，并在收尾输出代码变更、重点审查与可复跑验证证据"
+  default_prompt: "使用 $aegisos-lesson-dev 处理指定课程或 User Story；先定位已有产物与授权阶段，收尾时提供代码变更、重点 Review 和验证指南。"

@@ -1,6 +1,7 @@
 package com.aegisos.provider.adapter;
 
 import com.aegisos.core.provider.*;
+import com.aegisos.provider.config.ProviderThinkingMode;
 import com.aegisos.provider.service.ProviderErrorClassifier;
 import java.util.*;
 import org.springframework.ai.chat.messages.*;
@@ -79,6 +80,12 @@ public final class OpenAiMessageMapper {
   }
 
   public static Prompt prompt(ModelRequest r) {
+    return prompt(r, ProviderThinkingMode.UNSPECIFIED);
+  }
+
+  /** 每轮都由生产映射器使用启动快照生成扩展，避免续轮丢失或被缺省请求选项覆盖。 */
+  public static Prompt prompt(ModelRequest r, ProviderThinkingMode thinkingMode) {
+    if (thinkingMode == null) invalid();
     validate(r);
     var messages = new ArrayList<Message>();
     var callNames = new HashMap<String, String>();
@@ -113,6 +120,8 @@ public final class OpenAiMessageMapper {
     // Spring AI 2.0.1 直接 model.call 不执行 ToolCallback；没有旧版 internalToolExecutionEnabled API。
     // strict(false) 防止 SDK 为严格模式补写 required/additionalProperties，保持参数 schema 原意。
     var options = OpenAiChatOptions.builder().model(r.modelName()).maxRetries(0).strict(false);
+    if (thinkingMode == ProviderThinkingMode.DISABLED)
+      options.extraBody(Map.of("thinking", Map.of("type", "disabled")));
     if (r.generationOptions() != null) {
       options.temperature(r.generationOptions().temperature());
       options.maxCompletionTokens(r.generationOptions().maxOutputTokens());

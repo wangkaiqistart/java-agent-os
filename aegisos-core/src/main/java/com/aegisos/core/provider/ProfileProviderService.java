@@ -12,4 +12,10 @@ public interface ProfileProviderService {
    * @throws ProviderException 安全错误；与直接入口共用前置提交门槛、有限重试和终态故障处理
    */
   ModelResponse chatProfile(String sessionId, String profileName, ProfilePrompt prompt);
+
+  /** 扩展实现接通前拒绝，绝不静默丢弃处理关联。 */
+  default ModelResponse chatProfile(
+      String sessionId, String profileName, ProfilePrompt prompt, ProviderInvocation invocation) {
+    throw new UnsupportedOperationException("PROCESSING_CORRELATION_UNAVAILABLE");
+  }
 }

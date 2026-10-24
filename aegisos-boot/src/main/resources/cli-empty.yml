@@ -1,0 +1,2 @@
+# 专用 CLI 不加载工作目录、用户目录或外部 application.yml。
+{}

@@ -79,5 +79,21 @@
                 <executions><execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution></executions>
             </plugin></plugins></build>
         </profile>
+        <!-- 独立真实ReAct验收；普通test/package/quality不启用。 -->
+        <profile>
+            <id>real-react-smoke</id>
+            <build><plugins><plugin>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-failsafe-plugin</artifactId><version>3.5.2</version>
+                <configuration>
+                    <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+                    <includes><include>**/ReactWeatherSmokeIT.java</include></includes>
+                    <groups>real-react</groups>
+                    <reportsDirectory>${project.build.directory}/react-smoke-failsafe-reports</reportsDirectory>
+                    <failIfNoTests>true</failIfNoTests><failIfNoSpecifiedTests>true</failIfNoSpecifiedTests>
+                    <systemPropertyVariables><aegisos.react-smoke.enabled>true</aegisos.react-smoke.enabled></systemPropertyVariables>
+                </configuration>
+                <executions><execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution></executions>
+            </plugin></plugins></build>
+        </profile>
     </profiles>
 </project>

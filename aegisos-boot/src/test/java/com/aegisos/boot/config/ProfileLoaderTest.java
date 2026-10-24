@@ -11,6 +11,8 @@ import java.time.Duration;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** 全字段、冲突隔离与安全 YAML 都通过临时目录驱动；不读取管理员实际配置。 */
 class ProfileLoaderTest {
@@ -36,6 +38,36 @@ class ProfileLoaderTest {
 
   ProfileLoadReport load() {
     return new ProfileLoader(dir, providers(), n -> null).load();
+  }
+
+  /** 必须驱动生产加载器；只调用策略 helper 无法发现它未接入注册链路。 */
+  @ParameterizedTest
+  @ValueSource(strings = {"max_iterations: 101", "max_history_turns: 1001"})
+  void rejectsRuntimePolicyBeforeRegisteringProfileOrSource(String setting) throws Exception {
+    CourseAlignmentFixtures.agent(dir, "bad", MINIMAL + "settings: {" + setting + "}\n");
+    CourseAlignmentFixtures.agent(dir, "good", MINIMAL.replace("agent-a", "good"));
+    var report = load();
+    assertThat(report.profiles()).extracting(Profile::name).containsExactly("good");
+    assertThat(report.sources().sources()).containsOnlyKeys("good");
+    assertThat(report.diagnostics())
+        .containsExactly(
+            new ProfileDiagnostic(
+                ProfileDiagnostic.Code.INVALID_FIELD, ".aegisos/agents/bad/profile.yml"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "",
+        "settings: {max_iterations: 1, max_history_turns: 1}\n",
+        "settings: {max_iterations: 100, max_history_turns: 1000}\n"
+      })
+  void acceptsDefaultAndInclusiveRuntimePolicyBounds(String settings) throws Exception {
+    CourseAlignmentFixtures.agent(dir, "valid", MINIMAL + settings);
+    var report = load();
+    assertThat(report.profiles()).extracting(Profile::name).containsExactly("agent-a");
+    assertThat(report.sources().sources()).containsOnlyKeys("agent-a");
+    assertThat(report.diagnostics()).isEmpty();
   }
 
   @Test

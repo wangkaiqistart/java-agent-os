@@ -35,6 +35,7 @@ public class ProviderConfiguration {
       for (var d : definitions) {
         ProviderErrorCode reason = null;
         if (d.baseUrl() == null
+            || d.thinkingMode() == null
             || d.maxRetries() < 0
             || d.connectTimeout().isZero()
             || d.readTimeout().isZero()
@@ -73,6 +74,13 @@ public class ProviderConfiguration {
           .forEach(r -> r.adapter().close());
       throw new IllegalArgumentException("Invalid provider configuration");
     }
+  }
+
+  /** providerRegistry 为显式前置，确保快照中的值与协议客户端实际凭据相同。 */
+  @Bean
+  public RuntimeSecretSnapshot runtimeSecretSnapshot(
+      ProviderRegistry registry, EnvironmentCredentialResolver resolver) {
+    return resolver.snapshot();
   }
 
   @Bean

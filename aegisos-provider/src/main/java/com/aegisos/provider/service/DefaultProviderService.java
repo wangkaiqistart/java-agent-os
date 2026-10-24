@@ -38,25 +38,35 @@ public final class DefaultProviderService implements ProviderService, ProfilePro
   }
 
   public ModelResponse chat(ModelRequest request) {
-    return execute(UUID.randomUUID(), SessionAssociation.Mode.LEGACY_UNASSOCIATED, null, request);
+    return execute(
+        UUID.randomUUID(), SessionAssociation.Mode.LEGACY_UNASSOCIATED, null, request, null);
   }
 
   /** 显式新入口，校验先于外呼；合法追踪值并不要求会话已存在。 */
   public ModelResponse chat(String sessionId, ModelRequest request) {
-    return execute(UUID.randomUUID(), SessionAssociation.Mode.SESSION_REQUIRED, sessionId, request);
+    return execute(
+        UUID.randomUUID(), SessionAssociation.Mode.SESSION_REQUIRED, sessionId, request, null);
   }
 
   /** Profile查找必须在新UUID产生后；所有转换错误经同一个拒绝审计，不在外层抛未审计异常。 */
   public ModelResponse chatProfile(String sessionId, String profileName, ProfilePrompt prompt) {
+    return chatProfile(sessionId, profileName, prompt, null);
+  }
+
+  /** 显式携带处理轮次，沿用同一审计/有限重试链路；禁止 ThreadLocal 猜归属。 */
+  @Override
+  public ModelResponse chatProfile(
+      String sessionId, String profileName, ProfilePrompt prompt, ProviderInvocation invocation) {
     UUID id = UUID.randomUUID();
     String session = SessionAssociation.safe(sessionId);
     var associationError =
         SessionAssociation.error(SessionAssociation.Mode.SESSION_REQUIRED, sessionId);
-    if (associationError != null) return reject(id, null, null, null, associationError);
+    if (associationError != null) return reject(id, null, null, null, associationError, invocation);
     if (profileName == null || profileName.isBlank())
-      return reject(id, session, null, null, ProviderErrorCode.PROFILE_REQUIRED);
+      return reject(id, session, null, null, ProviderErrorCode.PROFILE_REQUIRED, invocation);
     var profile = profiles.get(profileName);
-    if (profile == null) return reject(id, session, null, null, ProviderErrorCode.UNKNOWN_PROFILE);
+    if (profile == null)
+      return reject(id, session, null, null, ProviderErrorCode.UNKNOWN_PROFILE, invocation);
     var selection = profile.provider();
     var identity =
         AuditMetadataPolicy.identity(
@@ -67,7 +77,8 @@ public final class DefaultProviderService implements ProviderService, ProfilePro
           session,
           identity.providerName(),
           identity.modelName(),
-          ProviderErrorCode.INVALID_REQUEST);
+          ProviderErrorCode.INVALID_REQUEST,
+          invocation);
     for (var schema : prompt.toolSchemas())
       if (schema == null || !profile.tools().contains(schema.name()))
         return reject(
@@ -75,7 +86,8 @@ public final class DefaultProviderService implements ProviderService, ProfilePro
             session,
             identity.providerName(),
             identity.modelName(),
-            ProviderErrorCode.INVALID_REQUEST);
+            ProviderErrorCode.INVALID_REQUEST,
+            invocation);
     return execute(
         id,
         SessionAssociation.Mode.SESSION_REQUIRED,
@@ -85,11 +97,16 @@ public final class DefaultProviderService implements ProviderService, ProfilePro
             selection.model(),
             prompt.messages(),
             prompt.toolSchemas(),
-            new GenerationOptions(selection.temperature(), prompt.maxOutputTokens())));
+            new GenerationOptions(selection.temperature(), prompt.maxOutputTokens())),
+        invocation);
   }
 
   private ModelResponse execute(
-      UUID id, SessionAssociation.Mode mode, String rawSession, ModelRequest request) {
+      UUID id,
+      SessionAssociation.Mode mode,
+      String rawSession,
+      ModelRequest request,
+      ProviderInvocation invocation) {
     String session =
         mode == SessionAssociation.Mode.LEGACY_UNASSOCIATED
             ? null
@@ -98,12 +115,12 @@ public final class DefaultProviderService implements ProviderService, ProfilePro
     String p = identity.providerName();
     String m = identity.modelName();
     var associationError = SessionAssociation.error(mode, rawSession);
-    if (associationError != null) return reject(id, session, p, m, associationError);
+    if (associationError != null) return reject(id, session, p, m, associationError, invocation);
     ProviderRegistration selected;
     try {
       selected = validate(request);
     } catch (ProviderException e) {
-      return reject(id, session, p, m, e.failure().code());
+      return reject(id, session, p, m, e.failure().code(), invocation);
     }
     // begin 返回意味着独立事务已经提交；HTTP不能位于这个事务中。
     // complete也必须提交才可返回或重试，失败时保留UNKNOWN，不能隐藏此前外呼。
@@ -112,7 +129,9 @@ public final class DefaultProviderService implements ProviderService, ProfilePro
     for (long number = 1; number <= (long) selected.definition().maxRetries() + 1; number++) {
       AuditHandle handle;
       try {
-        handle = audit.begin(AuditMetadataPolicy.start(id, number, identity, session));
+        handle = audit.begin(AuditMetadataPolicy.start(id, number, identity, session, invocation));
+      } catch (InvalidProviderInvocationException e) {
+        return reject(id, null, p, m, ProviderErrorCode.INVALID_REQUEST, null);
       } catch (RuntimeException e) {
         throw failure(id, ProviderErrorCode.AUDIT_UNAVAILABLE, p, m, attempts, false, outcome);
       }
@@ -196,10 +215,18 @@ public final class DefaultProviderService implements ProviderService, ProfilePro
   }
 
   private ModelResponse reject(
-      UUID id, String session, String p, String m, ProviderErrorCode code) {
+      UUID id,
+      String session,
+      String p,
+      String m,
+      ProviderErrorCode code,
+      ProviderInvocation invocation) {
     try {
       audit.reject(
-          AuditMetadataPolicy.rejection(id, new AuditMetadataPolicy.Identity(p, m), code, session));
+          AuditMetadataPolicy.rejection(
+              id, new AuditMetadataPolicy.Identity(p, m), code, session, invocation));
+    } catch (InvalidProviderInvocationException e) {
+      return reject(id, null, p, m, ProviderErrorCode.INVALID_REQUEST, null);
     } catch (RuntimeException e) {
       throw failure(
           id, ProviderErrorCode.AUDIT_UNAVAILABLE, p, m, 0, false, ExternalOutcome.NOT_SENT);

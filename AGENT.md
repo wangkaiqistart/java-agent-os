@@ -4,7 +4,7 @@
 
 AegisOS 是一个基于 Java 的企业级 Agent OS 运行时底座，目标是部署在企业自己的服务器、虚拟机或 Kubernetes 环境中，为多个业务 Agent 统一提供模型调用、ReAct 推理、记忆、工具、渠道、调度、审计和 Web 接入能力。
 
-当前仓库已建立 Java 21、Spring Boot 4.1.1、Maven 九模块骨架和工程基础设施。US-1 Provider Java 接口、OpenAI 兼容协议和 SQLite 审计代码及测试已完成，依赖安全门禁已于 2026-10-21 23:23 通过，T051 已完成；验证见 `specs/002-provider-abstraction/validation.md`；ReAct/Memory/Tool 执行尚未实现；现有可运行能力及验证结果见 `docs/engineering/initialization.md`，开发命令见 `docs/engineering/development.md`，依赖修复与剩余风险见 `docs/engineering/dependency-security.md`。不得把长期设计当作已实现能力。
+当前仓库已建立 Java 21、Spring Boot 4.1.1、Maven 九模块骨架和工程基础设施。US-1 Provider Java 接口、OpenAI 兼容协议和 SQLite 审计代码及测试已完成，依赖安全门禁已于 2026-10-21 23:23 通过，T051 已完成；验证见 `specs/002-provider-abstraction/validation.md`；US2 已实现 ReAct、统一 Memory 门面/持久会话、Sandbox 下的 http_get 与 init/chat CLI；长期记忆默认空。当前工程门禁与 A14 真实验收状态见 specs/003-react-loop/validation.md；现有可运行能力及验证结果见 `docs/engineering/initialization.md`，开发命令见 `docs/engineering/development.md`，依赖修复与剩余风险见 `docs/engineering/dependency-security.md`。不得把长期设计当作已实现能力。
 
 ## 阅读顺序与事实源
 
@@ -65,7 +65,7 @@ CLI / REST API / Scheduler
  Session、Memory、审计数据持久化
 ```
 
-一个 Agent 目录的运行配置唯一来自 `.aegisos/agents/<dir>/profile.yml`，`AGENT.md` 保留任务指令。本轮 boot 的 ProfileLoader 只在启动/重启加载安全 YAML 和目录技能绑定；core 保存不可变 Profile/Registry，provider 通过同一个 DefaultProviderService 暴露直接/配置调用入口。禁止解析 AGENT.md frontmatter、扫描 `.aegisos/profiles/` 或每请求读盘回退。技能正文/脚本/bootstrap/通知/调度本轮不读取或执行。
+一个 Agent 目录的运行配置唯一来自 `.aegisos/agents/<dir>/profile.yml`，`AGENT.md` 保留任务指令。本轮 boot 的 ProfileLoader 只在启动/重启加载安全 YAML 和目录技能绑定；core 保存不可变 Profile/Registry，provider 通过同一个 DefaultProviderService 暴露直接/配置调用入口。禁止解析 AGENT.md frontmatter、扫描 `.aegisos/profiles/` 或每请求读盘回退。AGENT/Bootstrap/已绑定 SKILL 正文逐次安全重读；脚本/通知/调度不执行。
 
 ## 必须遵守的技术原则
 
@@ -150,5 +150,16 @@ bash scripts/check.sh dependencies   # 依赖漏洞；数据源失败也阻断
 - 原 002 的 51 项任务、validation.md 与 V001 保留为历史。新增证据仅写 `specs/005-provider-course-alignment/validation.md`。
 - `chat(sessionId, request)` 与 `chatProfile` 必须显式提供合法追踪值；不查会话表。旧入口 session_id=null。每次逻辑请求新 requestId，重试保持关联、attemptNo 递增。
 - V2 新增 session_id/success/error_message，保留 status/error_code。STARTED 的 success/error_message 均空，成功 true/空，失败及拒绝 false/固定安全说明。begin 提交前禁止外呼，complete 失败 UNKNOWN 且停止重试。
-- 新空库创建 V2；已有 V1 仅 MIGRATION_REQUIRED 拒绝，必须停机备份后离线手工迁移。不得在实现或测试中迁移个人库。
+- 005 历史阶段新库为 V2；US2 当前新库创建 V3，已有 V1/V2 均 MIGRATION_REQUIRED 拒绝，必须停机备份后离线手工迁移。不得在实现或测试中迁移个人库。
 - `real-provider-smoke` 只在 boot 显式启用，真实模型为 DeepSeek。默认构建/CI不外呼；缺条件、零发现、跳过或旧报告一律不能 PASS。D-02 已于2026-10-22通过一次DeepSeek真实请求/非空响应/成功审计及重开核验；最终任务与门禁以005 validation为准，不自动进入ReAct。
+
+## US2 当前实施边界
+
+- 公共 AgentService 创建持久绑定 Profile 的 UUID 会话；process 显式传 session/profile/message，不静默新建/换 Agent。CLI：init / 单次 stdin chat / --session 续聊，stdout 只输出安全 JSON，诊断 stderr；无子命令保留原 Web 基础入口。
+- V3 存储保存会话/处理/轮次/完整交换/工具审计及 Provider 请求关联；只有安全响应提交后才增加迭代数。网络外呼不处于数据库长事务中，审计先可靠提交。
+- 默认最多10轮、最近20个 COMPLETED 用户处理；末轮工具只保存 OPEN，不执行，不发起下一轮。恢复遗留 RUNNING→INTERRUPTED，不重放旧模型/工具。
+- 当前仅 http_get，targets 默认空；所有工具走 Sandbox 和持久审计。长期记忆默认空实现，不读个人 MEMORY.md，不提前声称完整 US3/US4 已交付。
+- 生产正文读取要求 SecureDirectoryStream：Linux 正向验收；macOS 缺少时明确 CONTEXT_FILE_UNAVAILABLE，禁止增加弱化回退。
+- Provider可选thinking-mode仅接受显式disabled，启动冻结，每轮由生产mapper生成thinking.type=disabled；缺省无扩展，不按名称猜测。暂不支持thinking工具续轮，不保存reasoning_content。课程专用YAML必须disabled并参与指纹；旧真实FAIL保留，新授权新版真实天气PASS（3模型发送/1GET、零重试、同会话两处理完成）；003原课程阶段为141/141项；随后三项评审修复追加T142～T150，当前完成数与门禁见003 validation末尾。后续真实运行须明确启用。
+- real-react-smoke 默认关闭；必须最终工程门禁通过且获得本次明确授权，最多两处理/6模型发送/2GET、重试0；历史 real-provider-smoke 不能替代天气事实验收或构成本次授权。
+- 执行证据只更新003，不改写002/005历史；不自动提交/推送或迁移个人库。详见 docs/engineering/us2-runtime.md 与 us2-migration.md。

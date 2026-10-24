@@ -1,0 +1,35 @@
+# 全局配置仅在启动/重启时读取；凭据必须从环境或受控密钥存储注入。
+aegisos:
+  audit:
+    path: .aegisos/aegisos.db
+    busy-timeout-ms: 1000
+  providers:
+    - name: deepseek-main
+      adapter: openai-compatible
+      models: [deepseek-flash]
+      base-url: https://api.deepseek.com
+      credential-ref: env:DEEPSEEK_API_KEY
+      # 需要非thinking工具对话时显式声明；缺省不向厂商发送thinking扩展。
+      # thinking-mode: disabled
+      max-retries: 0
+      connect-timeout: 5s
+      read-timeout: 60s
+  react:
+    max-context-bytes: 262144
+    max-message-bytes: 32768
+    max-context-file-bytes: 32768
+    max-context-files: 32
+    max-tool-arguments-bytes: 8192
+    max-tool-result-bytes: 16384
+    max-tools-per-response: 8
+    max-output-tokens: 1024
+    zone: Asia/Shanghai
+  sandbox:
+    http-get:
+      dns-timeout: 2s
+      connect-timeout: 3s
+      read-timeout: 5s
+      execution-timeout: 10s
+      max-response-bytes: 8192
+      # 目标必须人工批准；默认不允许任何工具网络请求。
+      targets: []

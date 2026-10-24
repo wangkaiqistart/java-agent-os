@@ -39,7 +39,7 @@ public final class OpenAiClientFactory {
               .options(OpenAiChatOptions.builder().maxRetries(0).build())
               .observationRegistry(ObservationRegistry.NOOP)
               .build();
-      return new OpenAiCompatibleAdapter(model, transport);
+      return new OpenAiCompatibleAdapter(model, transport, definition.thinkingMode());
     } catch (RuntimeException e) {
       transport.close();
       throw com.aegisos.provider.service.ProviderErrorClassifier.error(

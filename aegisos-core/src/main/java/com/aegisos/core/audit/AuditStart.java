@@ -10,7 +10,18 @@ public record AuditStart(
     String providerName,
     String modelName,
     Instant createdAt,
-    String sessionId) {
+    String sessionId,
+    com.aegisos.core.provider.ProviderInvocation invocation) {
+  public AuditStart(
+      UUID requestId,
+      long attemptNo,
+      String providerName,
+      String modelName,
+      Instant createdAt,
+      String sessionId) {
+    this(requestId, attemptNo, providerName, modelName, createdAt, sessionId, null);
+  }
+
   public AuditStart(
       UUID requestId, long attemptNo, String providerName, String modelName, Instant createdAt) {
     this(requestId, attemptNo, providerName, modelName, createdAt, null);

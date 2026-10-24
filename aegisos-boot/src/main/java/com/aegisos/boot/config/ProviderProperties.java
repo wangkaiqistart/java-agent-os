@@ -1,6 +1,7 @@
 package com.aegisos.boot.config;
 
 import com.aegisos.provider.config.ProviderDefinition;
+import com.aegisos.provider.config.ProviderThinkingMode;
 import java.util.*;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -58,7 +59,10 @@ public class ProviderProperties {
               ref,
               retries,
               connect,
-              read));
+              read,
+              e.thinkingMode == null
+                  ? ProviderThinkingMode.UNSPECIFIED
+                  : "disabled".equals(e.thinkingMode) ? ProviderThinkingMode.DISABLED : null));
     }
     return List.copyOf(definitions);
   }
@@ -102,6 +106,16 @@ public class ProviderProperties {
   }
 
   public static class Entry {
+    private String thinkingMode;
+
+    public String getThinkingMode() {
+      return thinkingMode;
+    }
+
+    public void setThinkingMode(String value) {
+      thinkingMode = value;
+    }
+
     private String name;
 
     public String getName() {

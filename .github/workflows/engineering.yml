@@ -19,6 +19,12 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python3 -m pip install PyYAML==6.0.3
+      - run: python3 -m unittest discover -s scripts/tests -p test_verify_react_smoke.py
+      - run: python3 scripts/verify-react-migration.py
       - run: bash scripts/check.sh quality
       - uses: actions/upload-artifact@v4
         if: always()

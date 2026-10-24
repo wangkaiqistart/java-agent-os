@@ -111,11 +111,16 @@ final class SingleRequestHttpClient implements HttpClient {
           .forEach(
               name -> request.headers().values(name).forEach(value -> b.addHeader(name, value)));
       try (var response = client.newCall(b.build()).execute()) {
+        // 收到响应头即保留事实；包括超限、解码及后续流读取故障。
+        capture.set(new Capture(null, true));
         var responseBody = response.body();
         if (responseBody == null)
           throw ProviderErrorClassifier.error(
               ProviderErrorCode.PROVIDER_PROTOCOL_ERROR, false, ExternalOutcome.RESPONDED);
-        byte[] bytes = responseBody.bytes();
+        byte[] bytes = responseBody.byteStream().readNBytes(1048576 + 1);
+        if (bytes.length > 1048576)
+          throw ProviderErrorClassifier.error(
+              ProviderErrorCode.PROVIDER_PROTOCOL_ERROR, false, ExternalOutcome.RESPONDED);
         capture.set(new Capture(null, true));
         if (response.isSuccessful()) bytes = prepareResponse(bytes);
         var headers = com.openai.core.http.Headers.builder();

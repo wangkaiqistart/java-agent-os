@@ -12,6 +12,11 @@ public final class ProviderFixtures {
   private ProviderFixtures() {}
 
   public static ProviderDefinition definition(HttpStub stub, int retries) {
+    return definition(stub, retries, Duration.ofMillis(120));
+  }
+
+  /** 路由/容量测试显式给足调度余量；超时与重试测试仍保留原120ms故障边界。 */
+  public static ProviderDefinition definition(HttpStub stub, int retries, Duration readTimeout) {
     return new ProviderDefinition(
         "p",
         "openai-compatible",
@@ -20,7 +25,7 @@ public final class ProviderFixtures {
         "env:TEST_KEY",
         retries,
         Duration.ofSeconds(1),
-        Duration.ofMillis(120));
+        readTimeout);
   }
 
   public static ProviderRegistration registration(HttpStub stub, int retries) {
