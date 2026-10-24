@@ -42,6 +42,15 @@ public final class AgentService {
     return p;
   }
 
+  /** 多渠道复用同一集中绑定入口，CLI不生成或拼接身份主键。 */
+  public SessionSnapshot getOrCreateSession(SessionIdentity identity) {
+    Objects.requireNonNull(identity);
+    guard.check(identity.channel());
+    guard.check(identity.user());
+    profile(identity.profile());
+    return memory.getOrCreateSession(identity);
+  }
+
   public SessionSnapshot createSession(String profileName) {
     profile(profileName);
     return memory.createSession(profileName);

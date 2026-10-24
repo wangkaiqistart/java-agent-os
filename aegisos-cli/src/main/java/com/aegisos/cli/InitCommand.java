@@ -1,8 +1,8 @@
 package com.aegisos.cli;
 
+import com.aegisos.core.platform.OwnerOnlyFiles;
 import java.io.*;
 import java.nio.file.*;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.*;
 
 /** 离线初始化。预检整棵目标树，仅 CREATE_NEW；失败只逆序删除本次创建且仍为普通项的路径。 */
@@ -31,24 +31,13 @@ public final class InitCommand {
               ".aegisos/agents/weather/skills")) {
         Path path = root.resolve(name);
         verifyParents(root, path.getParent());
-        try {
-          Files.createDirectory(
-              path,
-              PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
-        } catch (UnsupportedOperationException e) {
-          Files.createDirectory(path);
-        }
+        OwnerOnlyFiles.createDirectory(path);
         created.add(path);
       }
       for (var entry : files.entrySet()) {
         Path path = root.resolve(entry.getKey());
         verifyParents(root, path.getParent());
-        try (var out =
-            Files.newOutputStream(
-                path,
-                StandardOpenOption.CREATE_NEW,
-                StandardOpenOption.WRITE,
-                LinkOption.NOFOLLOW_LINKS)) {
+        try (var out = OwnerOnlyFiles.newOutputStream(path)) {
           created.add(path);
           out.write(entry.getValue());
         }

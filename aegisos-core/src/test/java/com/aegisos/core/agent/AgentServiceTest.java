@@ -147,7 +147,18 @@ class AgentServiceTest {
       boolean yes = stream instanceof SecureDirectoryStream<?>;
       if (Boolean.getBoolean("aegisos.test.require-secure-directory-stream"))
         assertThat(yes).isTrue();
-      return yes;
+      Path probe = Files.createTempFile(root, "platform-probe", ".md");
+      try {
+        Files.writeString(probe, "平台安全读取探针");
+        byte[] bytes =
+            com.aegisos.core.platform.SecureFileAccess.read(
+                root.toRealPath(), probe.toRealPath(), 128);
+        if (!new String(bytes, java.nio.charset.StandardCharsets.UTF_8).equals("平台安全读取探针"))
+          throw new AssertionError("PLATFORM_READ_REQUIRED");
+        return true;
+      } finally {
+        Files.delete(probe);
+      }
     }
   }
 

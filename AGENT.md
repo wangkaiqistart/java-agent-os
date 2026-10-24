@@ -159,7 +159,24 @@ bash scripts/check.sh dependencies   # 依赖漏洞；数据源失败也阻断
 - V3 存储保存会话/处理/轮次/完整交换/工具审计及 Provider 请求关联；只有安全响应提交后才增加迭代数。网络外呼不处于数据库长事务中，审计先可靠提交。
 - 默认最多10轮、最近20个 COMPLETED 用户处理；末轮工具只保存 OPEN，不执行，不发起下一轮。恢复遗留 RUNNING→INTERRUPTED，不重放旧模型/工具。
 - 当前仅 http_get，targets 默认空；所有工具走 Sandbox 和持久审计。长期记忆默认空实现，不读个人 MEMORY.md，不提前声称完整 US3/US4 已交付。
-- 生产正文读取要求 SecureDirectoryStream：Linux 正向验收；macOS 缺少时明确 CONTEXT_FILE_UNAVAILABLE，禁止增加弱化回退。
+- 003的SDS唯一平台限制已由007替代：Linux继续SDS，macOS使用Darwin目录FD/openat，Windows使用本地NTFS句柄。不得添加普通路径读取或关闭校验的回退；Windows无真实执行证据时仍记NOT_RUN，见007 validation。
 - Provider可选thinking-mode仅接受显式disabled，启动冻结，每轮由生产mapper生成thinking.type=disabled；缺省无扩展，不按名称猜测。暂不支持thinking工具续轮，不保存reasoning_content。课程专用YAML必须disabled并参与指纹；旧真实FAIL保留，新授权新版真实天气PASS（3模型发送/1GET、零重试、同会话两处理完成）；003原课程阶段为141/141项；随后三项评审修复追加T142～T150，当前完成数与门禁见003 validation末尾。后续真实运行须明确启用。
 - real-react-smoke 默认关闭；必须最终工程门禁通过且获得本次明确授权，最多两处理/6模型发送/2GET、重试0；历史 real-provider-smoke 不能替代天气事实验收或构成本次授权。
 - 执行证据只更新003，不改写002/005历史；不自动提交/推送或迁移个人库。详见 docs/engineering/us2-runtime.md 与 us2-migration.md。
+
+## 第18节 CLI 补齐（006）当前边界
+
+- 006 在 US2 归档上新增12个叶命令与 Picocli 入口，TTY默认REPL、管道默认原七字段JSON，可显式指定模式。`--agent/--profile`互斥；交互默认`(cli,local,profile)`，不是认证身份。所有对话仍经 AgentService/MemoryService，不复制ReAct。
+- 006 新空库版本为V4，新增session_bindings；V1/V2/V3非空库一律MIGRATION_REQUIRED，停机备份后显式离线迁移。保留V3历史/审计分表，不新增messages_json，不自动认领旧UUID。不迁移个人库。
+- 轻命令不解析凭据、不建模型客户端或数据库。session list仅查询既有规范V4库，要求既有安全sidecar与独占短锁；WAL/SHM/journal无法证明零写时拒绝，不初始化/恢复/读写回退。
+- Profile管理只创建安全模板或原子移出已验证来源到回收目录，不覆盖、不递归跟随链接、不级联删除历史。配置继续YAML和启动快照，正文安全目标不变；007将SDS唯一限制替换为三平台受控句柄。
+- serve只提供本机Web基础和健康，不含Agent业务API；gateway明确未启用、退出6。第18节完整三模式仍延期；T076在独立新授权下完成真实CLI天气PASS（3次模型发送/1GET、零重试、同会话两处理、quit及关闭重开核验），不复用US2真实结果。真实JAR进程天气未另跑，进程层沿用本节回环探针；后续真实外呼需对应授权。
+- 本轮任务与执行证据仅写006，不改002/003/005历史；默认只跑临时库/回环替身。使用见 docs/engineering/cli-usage.md；代码阅读/复审/验证见 docs/engineering/006-cli-course-alignment-changes-review-verification.md。代码提交/推送仍按用户单独指令执行。
+
+## 三平台运行（007）
+
+- 当前跨平台改动叠加在未提交006之上，证据只追加specs/007-cross-platform-runtime，不覆盖002/003/005/006历史。Java21、九模块、V4和业务范围不变。
+- core/platform封装SDS、Darwin和Windows/JNA5.17.0；领域、CLI、storage仅调用门面。身份、ABI、原生库或权限不能验证时拒绝，禁止弱化回退。
+- Unix新建目录700/文件600；Windows初始受保护owner DACL。数据库/sidecar单硬链接、独立锁生命周期、JVM先认领、只读零初始化/恢复仍必须验证。Windows仅本地NTFS盘符；URI/ADS/UNC/映射网络卷拒绝。
+- .github/workflows/engineering.yml新增三OS矩阵。缺少Windows CI/实机执行不能宣称三平台全部通过；同一工作区Maven串行，默认仅回环模型和临时库。
+- IDEA入口、环境变量与YAML使用见docs/engineering/cross-platform-runtime.md；本轮重点review和复跑方法见docs/engineering/007-cross-platform-runtime-changes-review-verification.md。不自动commit/push、真实模型调用或个人库迁移。

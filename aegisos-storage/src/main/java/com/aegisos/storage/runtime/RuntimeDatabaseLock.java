@@ -1,10 +1,11 @@
 package com.aegisos.storage.runtime;
 
 import com.aegisos.core.agent.*;
+import com.aegisos.core.platform.OwnerOnlyFiles;
+import com.aegisos.core.platform.SecureFileAccess;
 import java.io.IOException;
 import java.nio.channels.*;
 import java.nio.file.*;
-import java.nio.file.attribute.*;
 import java.util.*;
 
 /**
@@ -24,7 +25,7 @@ public final class RuntimeDatabaseLock implements AutoCloseable {
       Path parent = normalized.getParent();
       if (parent == null || normalized.getFileName() == null)
         throw new com.aegisos.core.audit.AuditUnavailableException();
-      Files.createDirectories(parent);
+      OwnerOnlyFiles.createDirectories(parent);
       Path real =
           Files.exists(normalized)
               ? normalized.toRealPath()
@@ -34,7 +35,7 @@ public final class RuntimeDatabaseLock implements AutoCloseable {
       Path filename = real.getFileName();
       if (filename == null || filename.toString().toLowerCase(Locale.ROOT).endsWith(".lock"))
         throw new com.aegisos.core.audit.AuditUnavailableException();
-      result.lock(real.resolveSibling(filename + ".lock"));
+      result.lock(real.resolveSibling(filename + ".lock"), false);
       // SQLite/JDBC 会独立打开和关闭数据库文件；在 POSIX 上，这会释放同进程对该 inode 的
       // record locks，不能用数据库 inode 锁保证生命周期排他。独立 sidecar 不受连接池轮换影响。
       // 硬链接有不同的规范路径/sidecar，因此在任何 SQLite 连接或恢复动作之前一律拒绝。
@@ -54,30 +55,41 @@ public final class RuntimeDatabaseLock implements AutoCloseable {
 
   private static void requireSingleLinkDatabase(Path database) throws IOException {
     try {
-      try {
-        Files.createFile(
-            database,
-            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-      } catch (UnsupportedOperationException e) {
-        Files.createFile(database);
-      }
+      OwnerOnlyFiles.createFile(database);
     } catch (FileAlreadyExistsException ignored) {
       // 只检查已有文件，不截断、不修改其权限；旧版本数据库仍由 schema 门槛决定是否可启动。
     }
     requireSingleLinkFile(database);
-    // 无 unix:nlink 的文件系统会抛出异常并安全拒绝，不能把“无法验证”当成单链接。
+    // Unix nlink / Windows原生链接数均必须可验证，不能把“无法验证”当成单链接。
     // 工作区仍由可信管理员维护；不承诺防御同等 OS 权限下并发重命名/删除锁文件的恶意写者。
   }
 
   private static void requireSingleLinkFile(Path database) throws IOException {
-    var attributes =
-        Files.readAttributes(database, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-    Object count = Files.getAttribute(database, "unix:nlink", LinkOption.NOFOLLOW_LINKS);
-    if (!attributes.isRegularFile() || !(count instanceof Number links) || links.longValue() != 1)
-      throw new com.aegisos.core.audit.AuditUnavailableException();
+    SecureFileAccess.requireSingleLink(database);
   }
 
-  private void lock(Path path) throws IOException {
+  /** 查询不创建数据库/sidecar；先认领JVM所有权再打开FD，失败不能影响其他持有者。 */
+  public static RuntimeDatabaseLock acquireQuery(Path database) {
+    var result = new RuntimeDatabaseLock();
+    try {
+      Path path = database.toAbsolutePath().normalize();
+      Path filename = path.getFileName();
+      if (filename == null || filename.toString().toLowerCase(Locale.ROOT).endsWith(".lock"))
+        throw new IOException();
+      requireSingleLinkFile(path);
+      path = path.toRealPath();
+      Path sidecar = path.resolveSibling(path.getFileName() + ".lock");
+      requireSingleLinkFile(sidecar);
+      result.lock(sidecar, true);
+      return result;
+    } catch (IOException | RuntimeException e) {
+      result.close();
+      throw new com.aegisos.core.memory.SessionQueryException(
+          com.aegisos.core.memory.SessionQueryException.State.QUERY_UNAVAILABLE);
+    }
+  }
+
+  private void lock(Path path, boolean existingOnly) throws IOException {
     // FileLock 的 JVM 内重叠检测发生在 channel 打开之后；失败时关闭第二个 fd 也会释放
     // 第一持有者的 POSIX 锁。因此必须先在 JVM 内认领规范路径，再打开唯一的 sidecar channel。
     synchronized (OWNED_SIDECARS) {
@@ -87,18 +99,15 @@ public final class RuntimeDatabaseLock implements AutoCloseable {
     // 已存在的多硬链接 sidecar 必须在打开前拒绝；打开后再拒绝并 close 已足以释放
     // 当前进程从另一规范路径持有的同 inode POSIX 锁。打开后的复核仍保留，不作并发替换保证。
     if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) requireSingleLinkFile(path);
-    Set<OpenOption> options =
-        Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS);
-    FileChannel channel;
-    try {
-      channel =
-          FileChannel.open(
-              path,
-              options,
-              PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-    } catch (UnsupportedOperationException e) {
-      channel = FileChannel.open(path, options);
+    if (!existingOnly) {
+      try {
+        OwnerOnlyFiles.createFile(path);
+      } catch (FileAlreadyExistsException ignored) {
+        /* 既有文件仅检查，不修改权限。 */
+      }
     }
+    FileChannel channel =
+        FileChannel.open(path, Set.of(StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS));
     channels.add(channel);
     requireSingleLinkFile(path);
     FileLock lock = channel.tryLock();

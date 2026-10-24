@@ -13,7 +13,7 @@
 
 AegisOS 运行在企业自己的服务器、虚拟机或 Kubernetes 环境中，为多个业务 Agent 统一提供大模型调用、ReAct 推理、记忆、工具、渠道、定时任务、审计和 REST 接入能力。业务方通过 Agent 目录描述“做什么”和“怎么运行”，不需要为每个 Agent 重复编写后端服务。
 
-> 当前使用 Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / Maven 九模块。已实现显式 Provider、有限重试、ReAct、持久会话、唯一 Sandbox 下的 http_get，以及 init / 单次 stdin chat CLI；长期记忆默认空，业务 Web API、其他工具、通知和调度尚未实现。US2 离线测试、工程门禁和显式 `thinking-mode: disabled` 下的真实天气验收已通过（3次模型发送、1次天气GET、同会话两次处理完成）；首次失败记录保留，暂不支持thinking工具续轮，详见 [US2 验证记录](specs/003-react-loop/validation.md)。生产指令正文读取要求 SecureDirectoryStream，Linux 完成正向验收，macOS 明确拒绝读取。原 [US1](specs/002-provider-abstraction/validation.md) / [课程补齐](specs/005-provider-course-alignment/validation.md) 历史保留。
+> 当前使用 Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / Maven 九模块。已实现显式 Provider、有限重试、ReAct、持久会话、唯一 Sandbox 下的 http_get，以及 Picocli 12命令入口、TTY/显式 REPL 与单次 JSON chat、V4 三元组持久绑定及严格只读查询；长期记忆默认空，业务 Web API、其他工具、通知和调度尚未实现。US2 离线测试、工程门禁和显式 `thinking-mode: disabled` 下的真实天气验收已通过（3次模型发送、1次天气GET、同会话两次处理完成）；首次失败记录保留，暂不支持thinking工具续轮，详见 [US2 验证记录](specs/003-react-loop/validation.md)。007 已增加三平台受控文件访问：Linux SDS、macOS 目录FD、Windows NTFS句柄；macOS/Linux执行与Windows待运行状态见 [跨平台验证](specs/007-cross-platform-runtime/validation.md)。在IDEA运行与配置请看 [三平台指南](docs/engineering/cross-platform-runtime.md)。原 [US1](specs/002-provider-abstraction/validation.md) / [课程补齐](specs/005-provider-course-alignment/validation.md) 历史保留。 第18节独立真实CLI天气也已验收通过（3次模型发送/1次GET、零重试、同会话两条消息与重开审计），见[CLI验证记录](specs/006-cli-course-alignment/validation.md)末尾；完整Web/多渠道模式仍延期。
 
 > 后续代码评审的三项修复及回归、Maven 和复审记录追加在 [US2 验证记录末尾](specs/003-react-loop/validation.md#代码评审修复增量t142t1502026-10-22)，原任务与真实验收历史保留。
 
@@ -27,11 +27,11 @@ AegisOS 专注运行时，不承担可视化 Workflow 编排。Dify、Coze 等�
 
 | 能力 | 说明 |
 | --- | --- |
-| Provider（已实现） | OpenAI 兼容协议、显式 Provider/模型、独立 YAML Profile 与启动快照、可配置有限重试、会话关联及 SQLite 逐次审计（当前新库 V3）；schema 只翻译不执行。DeepSeek deepseek-flash 已通过一次真实单请求与持久审计验证。 |
+| Provider（已实现） | OpenAI 兼容协议、显式 Provider/模型、独立 YAML Profile 与启动快照、可配置有限重试、会话关联及 SQLite 逐次审计（当前新库 V4）；schema 只翻译不执行。DeepSeek deepseek-flash 已通过一次真实单请求与持久审计验证。 |
 | ReAct Loop（已实现） | 自实现有界循环、显式处理/轮次关联、末轮工具停止、完整交换裁剪、失败与重启中断。 |
-| Memory（会话已实现） | 统一 MemoryService 门面和 V3 SQLite 持久会话；长期记忆当前为空，Markdown/SQLite/Mem0 长期后端属于后续范围。 |
+| Memory（会话已实现） | 统一 MemoryService 门面和 V4 SQLite 持久会话（保留 V3 分表历史）；长期记忆当前为空，Markdown/SQLite/Mem0 长期后端属于后续范围。 |
 | Tool（最小能力已实现） | 当前仅 http_get、精确网络白名单、资源限制和持久审计；其余 8 工具、MCP 与 Java Plugin 扩展待实现。 |
-| CLI（已实现） | init 离线初始化；chat 单次 stdin、JSON 结果、显式 session 续聊，专用非 Web 运行时。 |
+| CLI（已实现） | 12命令帮助；安全Profile管理；TTY/显式REPL、pipe单次JSON；三元组恢复；只读摘要；serve仅Web基础，gateway明确未启用。 |
 | Web Service（基础设施） | 当前只有基础 HTTP/健康/监控；业务 REST API 待实现。 |
 
 ## 架构
@@ -83,7 +83,7 @@ CLI / REST API / Scheduler
 ├── skills/                # 公共 Skill 实体库
 ├── memory/
 │   └── MEMORY.md          # 长期记忆
-├── aegisos.db             # V3 会话与持久审计
+├── aegisos.db             # V4 会话绑定与持久审计
 ├── logs/                  # 结构化日志
 ├── AGENTS.md              # 项目级 Bootstrap
 ├── SOUL.md                # Agent 人格 Bootstrap
@@ -125,7 +125,7 @@ mvn clean package
 java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar
 ```
 
-已有 V1/V2 审计库启动会返回 `MIGRATION_REQUIRED`，需停机、一致性备份后按[V3 迁移指南](docs/engineering/us2-migration.md)手工升级（V1 先按005历史指南升级至有效V2）；测试使用临时库，不改个人库。
+已有 V1/V2/V3 审计库启动会返回 `MIGRATION_REQUIRED`，需停机、一致性备份后按[V3 迁移指南](docs/engineering/us2-migration.md)手工升级并继续执行 [V3→V4迁移](docs/engineering/cli-usage.md#v4-与严格只读查询)（V1先按005历史指南升级至有效V2）；测试使用临时库，不改个人库。
 
 默认仅监听 `127.0.0.1:8080`，健康检查为 `GET /actuator/health`。开发文档、可选本机 Prometheus、API 错误约定和 CI 门禁见[开发指南](docs/engineering/development.md)。
 
@@ -136,24 +136,17 @@ bash scripts/check.sh secrets
 bash scripts/check.sh dependencies
 ```
 
-## 规划中的产品命令
+## CLI 命令
 
-以下命令描述目标使用方式，当前尚未实现，不能作为现阶段的运行验证：
+使用已打包的 JAR，workspace 必须为明确的绝对路径；完整命令、REPL/批处理、V4和平台限制见 [CLI使用指南](docs/engineering/cli-usage.md)。
 
 ```bash
-# 初始化工作区
-aegisos init
-
-# 创建一个 Agent
-aegisos profile create hello-agent
-
-# 配置环境变量后启动交互式对话
-export DEEPSEEK_API_KEY=<your-api-key>
-aegisos chat --profile hello-agent
-
-# 启动 REST API
-aegisos serve --port 8080
+java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar --help
+java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar profile --help
+java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar chat --help
 ```
+
+serve只提供本机Web基础；gateway返回未启用及退出码6。完整业务接口仍在后续范围。
 
 业务系统计划通过以下类型的接口接入：
 
@@ -178,6 +171,8 @@ GET  /api/v1/health
 | [Provider 课程补齐](specs/005-provider-course-alignment/quickstart.md) | Profile YAML、会话审计、离线迁移及默认关闭的 DeepSeek 冒烟；真实单次验收 PASS（2026-10-22）。 |
 | [Provider 开发与验证](specs/002-provider-abstraction/quickstart.md) | US-1 配置、Java 调用边界、本地测试和审计验证。 |
 | [US2 变更、Review 与验证](docs/engineering/us2-changes-review-verification.md) | 模块与调用链、重点审查清单、三项修复反例、可复跑命令及已执行结果。 |
+| [CLI使用指南](docs/engineering/cli-usage.md) | 12命令、REPL/pipe、Profile、V4与只读查询、Web基础限制。 |
+| [CLI变更、Review与验证](docs/engineering/006-cli-course-alignment-changes-review-verification.md) | 第18节阅读地图、重点复审与本轮证据。 |
 | [Agent 指南](AGENT.md) | 面向 AI Agent 的仓库协作约定和事实源读取方式。 |
 
 ## 当前状态与开发前置事项
@@ -209,10 +204,10 @@ US2_WORKSPACE="$(mktemp -d)"
 java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar init --workspace "$US2_WORKSPACE"
 ```
 
-在支持 SecureDirectoryStream 的 Linux 上，编辑工作区 `.aegisos/config.yml` / `agents/weather/profile.yml`，从受控环境注入 `DEEPSEEK_API_KEY` 后，可执行一次真实 chat（会消耗模型额度）：
+在已验收的本地平台上（详见[三平台运行指南](docs/engineering/cross-platform-runtime.md)），编辑工作区 `.aegisos/config.yml` / `agents/weather/profile.yml`，从受控环境注入 `DEEPSEEK_API_KEY` 后，可执行一次真实 chat（会消耗模型额度）：
 
 ```bash
 printf '%s' '你好，请简短介绍自己。' | java -jar aegisos-boot/target/aegisos-boot-0.1.0-SNAPSHOT.jar chat --workspace "$US2_WORKSPACE" --agent weather
 ```
 
-stdout 为七字段 JSON；续聊增加 `--session <返回的sessionId>`。默认工具 targets 为空，天气目标需人工批准。详细配置、退出码、默认关闭的受预算天气验收见 [US2 指南](specs/003-react-loop/quickstart.md)；旧库须按 [V3 手工迁移](docs/engineering/us2-migration.md) 停机备份后操作，运行时不会自动升级。
+stdout 为七字段 JSON；续聊增加 `--session <返回的sessionId>`。默认工具 targets 为空，天气目标需人工批准。详细配置、退出码、默认关闭的受预算天气验收见 [US2 指南](specs/003-react-loop/quickstart.md)；旧库须按 [V4迁移说明](docs/engineering/cli-usage.md#v4-与严格只读查询) 停机备份并按历史顺序升级，运行时不会自动升级。

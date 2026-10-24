@@ -41,8 +41,8 @@ class ContextLoaderTest extends MinimalContextTest {
             List.of(
                 new SkillBinding(
                     "weather",
-                    root.relativize(binding).toString(),
-                    root.relativize(skill).toString())));
+                    root.relativize(binding).toString().replace(java.io.File.separatorChar, '/'),
+                    root.relativize(skill).toString().replace(java.io.File.separatorChar, '/'))));
     var source =
         new AgentSource(p.name(), root.toRealPath(), dir.toRealPath(), root.relativize(dir));
     var loader = new ContextLoader(budget, new DefaultSensitiveContentGuard(List.of()));

@@ -9,6 +9,7 @@
     <artifactId>aegisos-cli</artifactId>
     <name>AegisOS CLI</name>
     <dependencies>
+        <dependency><groupId>info.picocli</groupId><artifactId>picocli</artifactId></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-core</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-channel-cli</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>io.aegisos</groupId><artifactId>aegisos-web</artifactId><version>${project.version}</version></dependency>

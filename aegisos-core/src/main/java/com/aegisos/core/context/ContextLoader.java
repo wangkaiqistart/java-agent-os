@@ -4,10 +4,9 @@ import com.aegisos.core.agent.*;
 import com.aegisos.core.profile.Profile;
 import java.io.*;
 import java.nio.*;
-import java.nio.channels.*;
 import java.nio.charset.*;
 import java.nio.file.*;
-import java.nio.file.attribute.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
 /** 每轮读取正文；先验证启动来源，再使用目录描述符及 NOFOLLOW_LINKS 打开已解析的普通文件。 */
@@ -92,52 +91,24 @@ public final class ContextLoader implements ContextSourceLoader {
     if (!realRoot.equals(approvedRoot)
         || !realFile.startsWith(realRoot)
         || !Files.isRegularFile(realFile, LinkOption.NOFOLLOW_LINKS)) throw unavailable();
-    var streams = new ArrayList<DirectoryStream<Path>>();
+    byte[] bytes;
     try {
-      DirectoryStream<Path> opened = Files.newDirectoryStream(realRoot);
-      streams.add(opened);
-      if (!(opened instanceof SecureDirectoryStream<Path> current)) throw unavailable();
-      Path relative = realRoot.relativize(realFile);
-      for (int i = 0; i < relative.getNameCount() - 1; i++) {
-        var child = current.newDirectoryStream(relative.getName(i), LinkOption.NOFOLLOW_LINKS);
-        streams.add(child);
-        current = child;
-      }
-      Path name = relative.getFileName();
-      var view =
-          current.getFileAttributeView(
-              name, BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
-      BasicFileAttributes before = view.readAttributes();
-      if (!before.isRegularFile()) throw unavailable();
-      if (before.size() > budget.maxContextFileBytes())
-        throw new AgentException(AgentErrorCode.CONTEXT_LIMIT);
-      byte[] bytes;
-      try (var channel =
-              current.newByteChannel(
-                  name, Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS));
-          var input = Channels.newInputStream(channel)) {
-        bytes = input.readNBytes(budget.maxContextFileBytes() + 1);
-      }
-      if (bytes.length > budget.maxContextFileBytes())
-        throw new AgentException(AgentErrorCode.CONTEXT_LIMIT);
-      BasicFileAttributes after = view.readAttributes();
-      if (!after.isRegularFile()
-          || !Objects.equals(before.fileKey(), after.fileKey())
-          || before.size() != after.size()
-          || !before.lastModifiedTime().equals(after.lastModifiedTime())
-          || !file.toRealPath().equals(realFile)) throw unavailable();
-      String text =
-          StandardCharsets.UTF_8
-              .newDecoder()
-              .onMalformedInput(CodingErrorAction.REPORT)
-              .onUnmappableCharacter(CodingErrorAction.REPORT)
-              .decode(ByteBuffer.wrap(bytes))
-              .toString();
-      guard.check(text);
-      return text;
-    } finally {
-      for (int i = streams.size() - 1; i >= 0; i--) streams.get(i).close();
+      bytes =
+          com.aegisos.core.platform.SecureFileAccess.read(
+              realRoot, realFile, budget.maxContextFileBytes());
+    } catch (com.aegisos.core.platform.SecureFileAccess.TooLargeException e) {
+      throw new AgentException(AgentErrorCode.CONTEXT_LIMIT);
     }
+    if (!file.toRealPath().equals(realFile)) throw unavailable();
+    String text =
+        StandardCharsets.UTF_8
+            .newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(bytes))
+            .toString();
+    guard.check(text);
+    return text;
   }
 
   private static AgentException unavailable() {

@@ -23,7 +23,14 @@ public class CliApplicationConfiguration {
   }
 
   @Bean
-  public ChatCommand chatCommand(AgentService agents, CliChannel channel) {
-    return new ChatCommand(agents, channel);
+  public com.aegisos.channel.cli.ReplChannel replChannel(
+      SensitiveContentGuard guard, ContextBudget budget) {
+    return new com.aegisos.channel.cli.ReplChannel(guard, budget.maxMessageBytes());
+  }
+
+  @Bean
+  public ChatCommand chatCommand(
+      AgentService agents, CliChannel channel, com.aegisos.channel.cli.ReplChannel repl) {
+    return new ChatCommand(agents, channel, repl);
   }
 }

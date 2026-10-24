@@ -28,7 +28,7 @@ class ProviderRuntimeRegressionTest {
           assertThat(rows.getString(4)).isEqualTo("legacy-session");
         }
         try (var rows = s.executeQuery("select version from aegisos_schema")) {
-          assertThat(rows.getInt(1)).isEqualTo(3);
+          assertThat(rows.getInt(1)).isEqualTo(4);
         }
       }
     }

@@ -57,6 +57,12 @@ class ReactSchemaMigrationTest {
     List<Object> before = row(ds);
     migrate(path);
     assertThat(row(ds)).isEqualTo(before);
+    assertThatThrownBy(() -> AuditSchemaInitializer.initialize(ds))
+        .hasMessage("MIGRATION_REQUIRED");
+    try (var c = ds.getConnection()) {
+      ScriptUtils.executeSqlScript(
+          c, new ClassPathResource("db/migration/sqlite/V004__cli_session_bindings.sql"));
+    }
     AuditSchemaInitializer.initialize(ds);
     byte[] bytes = Files.readAllBytes(path);
     assertThatThrownBy(() -> migrate(path)).isInstanceOf(RuntimeException.class);

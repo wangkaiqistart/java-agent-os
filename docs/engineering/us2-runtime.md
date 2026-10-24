@@ -16,7 +16,7 @@ Provider 的 processId/iterationNo 通过四参数公共入口显式传递；req
 
 第一条 SYSTEM 顺序为角色（可空）→ AGENT → Bootstrap → Skill → ISO-8601 时间与时区。Bootstrap 显式列表按声明顺序读取；空列表尝试 `.aegisos/AGENTS.md`、`SOUL.md`、`USER.md`，仅真正缺失记安全 WARN。Skill 按绑定名称排序，必须保持启动时的相对软连接目标；改绑定需要重启。长期记忆只经 MemoryService，生产默认空实现，没有读取个人 MEMORY.md 或接入 Mem0。
 
-AGENT 正文批准根为当前 Agent 真目录；Bootstrap 批准根为 `.aegisos`；Skill 同时限定于绑定目标及公共 `.aegisos/skills` 根。使用安全目录描述符、NOFOLLOW_LINKS、有界读取、严格 UTF-8 和身份复核。需要实际提供 SecureDirectoryStream 的平台：本机 macOS 缺少该能力时明确拒绝为 CONTEXT_FILE_UNAVAILABLE；正向正文/会话验收使用 Linux。没有 macOS 弱化回退，不宣称抵御拥有同等操作系统权限的恶意写者。
+AGENT 正文批准根为当前 Agent 真目录；Bootstrap 批准根为 `.aegisos`；Skill 同时限定于绑定目标及公共 `.aegisos/skills` 根。使用安全目录描述符、NOFOLLOW_LINKS、有界读取、严格 UTF-8 和身份复核。007已将原SDS唯一平台限制替换为三平台受控实现：Linux SDS、macOS目录FD/openat、Windows本地NTFS句柄。身份无法验证时拒绝，没有普通路径弱化回退；历史验收仍以003当时环境为准。新平台实际状态见 [007验证](../../specs/007-cross-platform-runtime/validation.md)，IDEA用法见 [三平台指南](cross-platform-runtime.md)。不宣称抵御拥有同等操作系统权限的恶意写者。
 
 ## 上下文与敏感内容
 

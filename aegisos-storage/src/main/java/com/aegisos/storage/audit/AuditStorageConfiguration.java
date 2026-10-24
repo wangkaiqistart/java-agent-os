@@ -1,10 +1,10 @@
 package com.aegisos.storage.audit;
 
 import com.aegisos.core.audit.*;
+import com.aegisos.core.platform.OwnerOnlyFiles;
 import com.zaxxer.hikari.*;
 import jakarta.persistence.EntityManagerFactory;
 import java.nio.file.*;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,23 +19,11 @@ public class AuditStorageConfiguration {
       @Value("${aegisos.audit.path:.aegisos/aegisos.db}") String file,
       @Value("${aegisos.audit.busy-timeout-ms:1000}") int busyTimeout) {
     try {
-      if (busyTimeout <= 0
-          || file == null
-          || file.isBlank()
-          || file.contains(":")
-          || file.contains("?")) throw new AuditUnavailableException();
-      Path path = Path.of(file).toAbsolutePath().normalize();
+      if (busyTimeout <= 0) throw new AuditUnavailableException();
+      Path path = OwnerOnlyFiles.databasePath(file);
       Path parent = path.getParent();
       if (parent == null) throw new AuditUnavailableException();
-      if (!Files.exists(parent)) {
-        try {
-          Files.createDirectories(
-              parent,
-              PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
-        } catch (UnsupportedOperationException e) {
-          Files.createDirectories(parent);
-        }
-      }
+      OwnerOnlyFiles.createDirectories(parent);
       var lock = com.aegisos.storage.runtime.RuntimeDatabaseLock.acquire(path);
       var config = new HikariConfig();
       config.setJdbcUrl("jdbc:sqlite:" + path);

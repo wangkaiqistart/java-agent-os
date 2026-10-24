@@ -107,6 +107,40 @@ class RuntimeDatabaseLockTest {
     }
   }
 
+  @Test
+  void queryLockExcludesWriterAndFailedQueryCannotReleaseOwnersLock() throws Exception {
+    Path db = dir.resolve("query.sqlite");
+    try (var writer = RuntimeDatabaseLock.acquire(db)) {
+      assertThatThrownBy(() -> RuntimeDatabaseLock.acquireQuery(db))
+          .hasMessage("QUERY_UNAVAILABLE");
+      assertThat(probe(db)).isEqualTo(3);
+    }
+    try (var query = RuntimeDatabaseLock.acquireQuery(db)) {
+      assertThatThrownBy(() -> RuntimeDatabaseLock.acquire(db)).hasMessage("WORKSPACE_IN_USE");
+      assertThat(probe(db)).isEqualTo(3);
+    }
+    try (var writer = RuntimeDatabaseLock.acquire(db)) {
+      assertThat(writer).isNotNull();
+    }
+  }
+
+  @Test
+  void queryRejectsHardLinkedDatabaseAndSidecarWithoutReleasingExistingOwner() throws Exception {
+    Path db = dir.resolve("owner-query.sqlite");
+    try (var writer = RuntimeDatabaseLock.acquire(db)) {
+      var alias =
+          Files.createLink(
+              dir.resolve("alias-query.sqlite.lock"), dir.resolve("owner-query.sqlite.lock"));
+      Files.createFile(dir.resolve("alias-query.sqlite"));
+      assertThatThrownBy(() -> RuntimeDatabaseLock.acquireQuery(dir.resolve("alias-query.sqlite")))
+          .hasMessage("QUERY_UNAVAILABLE");
+      Files.delete(alias);
+      assertThat(probe(db)).isEqualTo(3);
+    }
+    Files.createLink(dir.resolve("hard-query.sqlite"), db);
+    assertThatThrownBy(() -> RuntimeDatabaseLock.acquireQuery(db)).hasMessage("QUERY_UNAVAILABLE");
+  }
+
   public static final class Probe {
     public static void main(String[] args) {
       try (var lock = RuntimeDatabaseLock.acquire(Path.of(args[0]))) {

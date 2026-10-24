@@ -25,6 +25,20 @@ public final class DefaultMemoryService implements MemoryService {
     this.budget = Objects.requireNonNull(budget);
   }
 
+  /** 新身份入口仍走唯一门面，不能因getOrCreate绕过已知凭据或恢复历史检查。 */
+  @Override
+  public SessionSnapshot getOrCreateSession(SessionIdentity identity) {
+    Objects.requireNonNull(identity);
+    guard.check(identity.channel());
+    guard.check(identity.user());
+    guard.check(identity.profile());
+    var saved = store.getOrCreateSession(identity);
+    guard.check(saved.sessionId());
+    guard.check(saved.profileName());
+    for (var message : saved.messages()) checkRestored(message);
+    return saved;
+  }
+
   public SessionSnapshot createSession(String profile) {
     guard.check(profile);
     return store.createSession(profile);

@@ -99,6 +99,59 @@ public final class JpaSessionStore implements SessionStore {
         });
   }
 
+  /** 绑定和候选会话同事务提交；唯一冲突回滚后最多重读一次，不留下孤儿或隐藏循环重试。 */
+  @Override
+  public SessionSnapshot getOrCreateSession(SessionIdentity identity) {
+    Objects.requireNonNull(identity);
+    String id;
+    try {
+      id =
+          transaction(
+              em -> {
+                String existing = binding(em, identity);
+                if (existing != null) {
+                  session(em, existing, identity.profile());
+                  return existing;
+                }
+                String candidate = UUID.randomUUID().toString(), time = now();
+                one(
+                    update(
+                        em,
+                        "INSERT INTO sessions(id,profile_name,created_at,updated_at,version,next_sequence_no) VALUES(?1,?2,?3,?3,0,1)",
+                        candidate,
+                        identity.profile(),
+                        time));
+                one(
+                    update(
+                        em,
+                        "INSERT INTO session_bindings(channel,user_id,profile_name,session_id,created_at) VALUES(?1,?2,?3,?4,?5)",
+                        identity.channel(),
+                        identity.user(),
+                        identity.profile(),
+                        candidate,
+                        time));
+                return candidate;
+              });
+    } catch (AgentException e) {
+      if (e.code() != AgentErrorCode.PERSISTENCE_UNCONFIRMED) throw e;
+      id = transaction(em -> binding(em, identity));
+      if (id == null) throw e;
+    }
+    return loadSession(id, identity.profile());
+  }
+
+  private static String binding(EntityManager em, SessionIdentity identity) {
+    var result =
+        query(
+                em,
+                "SELECT session_id FROM session_bindings WHERE channel=?1 AND user_id=?2 AND profile_name=?3",
+                identity.channel(),
+                identity.user(),
+                identity.profile())
+            .getResultList();
+    return result.isEmpty() ? null : result.getFirst().toString();
+  }
+
   private Object[] session(EntityManager em, String id, String profile) {
     var rows =
         rows(

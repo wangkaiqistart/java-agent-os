@@ -23,7 +23,9 @@ class ContextPathReplacementTest extends ContextLoaderTest {
             List.of(),
             List.of(
                 new SkillBinding(
-                    "s", root.relativize(binding).toString(), root.relativize(one).toString())));
+                    "s",
+                    root.relativize(binding).toString().replace(java.io.File.separatorChar, '/'),
+                    root.relativize(one).toString().replace(java.io.File.separatorChar, '/'))));
     var source =
         new AgentSource("logical", root.toRealPath(), dir.toRealPath(), root.relativize(dir));
     var loader = new ContextLoader(budget, new DefaultSensitiveContentGuard(List.of()));

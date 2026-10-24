@@ -74,7 +74,9 @@ public final class ProfilePathPolicy {
         if (!target.startsWith(common) || !Files.isDirectory(target)) throw new IOException();
         result.add(
             new SkillBinding(
-                name, root.relativize(binding).toString(), root.relativize(target).toString()));
+                name,
+                root.relativize(binding).toString().replace(java.io.File.separatorChar, '/'),
+                root.relativize(target).toString().replace(java.io.File.separatorChar, '/')));
       }
       return List.copyOf(result);
     } catch (IOException | RuntimeException e) {
@@ -84,7 +86,7 @@ public final class ProfilePathPolicy {
 
   public String source(Path p) {
     try {
-      String relative = root.relativize(p).toString();
+      String relative = root.relativize(p).toString().replace(java.io.File.separatorChar, '/');
       return new ProfileDiagnostic(Code.READ_FAILED, relative).source();
     } catch (RuntimeException e) {
       return "<invalid-source>";

@@ -9,6 +9,10 @@ import java.util.*;
 public interface SessionStore {
   SessionSnapshot createSession(String profileName);
 
+  default SessionSnapshot getOrCreateSession(SessionIdentity identity) {
+    throw new AgentException(AgentErrorCode.PERSISTENCE_UNCONFIRMED);
+  }
+
   SessionSnapshot loadSession(String sessionId, String profileName);
 
   ProcessingHandle beginProcessing(

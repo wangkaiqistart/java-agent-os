@@ -17,7 +17,10 @@ import org.springframework.context.annotation.Import;
 public class AegisOsApplication {
 
   public static void main(String[] args) {
-    if (args.length == 0 || args[0].startsWith("--")) {
+    if (args.length == 0
+        || (args.length == 1
+            && java.util.Set.of("--spring.profiles.active=dev", "--spring.profiles.active=metrics")
+                .contains(args[0]))) {
       SpringApplication.run(AegisOsApplication.class, args);
     } else {
       System.exit(dispatch(args, System.in, System.out, System.err));
@@ -29,45 +32,22 @@ public class AegisOsApplication {
       String[] args, java.io.InputStream in, java.io.PrintStream out, java.io.PrintStream err) {
     try {
       var parsed = com.aegisos.cli.CliArguments.parse(args);
+      if (parsed.command().equals("help")) {
+        com.aegisos.cli.AegisOsCli.printHelp(parsed.options().get("help-path"), out);
+        return 0;
+      }
+      if (parsed.command().equals("version")) {
+        out.println("AegisOS 0.1.0-SNAPSHOT");
+        return 0;
+      }
+      if (!parsed.command().equals("init") && !parsed.command().equals("chat"))
+        return new com.aegisos.boot.cli.DefaultCliServices().execute(parsed, in, out, err);
       if (parsed.command().equals("init")) {
         new com.aegisos.cli.InitCommand().run(parsed.workspace());
         out.println("{\"status\":\"INITIALIZED\"}");
         return 0;
       }
-      var values =
-          new java.util.HashMap<String, Object>(
-              new com.aegisos.boot.config.CliWorkspaceConfiguration().load(parsed.workspace()));
-      values.put("aegisos.cli.enabled", "true");
-      values.put("spring.config.location", "classpath:/cli-empty.yml");
-      values.put("logging.config", "classpath:logback-cli.xml");
-      var environment = new org.springframework.core.env.StandardEnvironment();
-      environment
-          .getPropertySources()
-          .remove(
-              org.springframework.core.env.StandardEnvironment
-                  .SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME);
-      environment
-          .getPropertySources()
-          .remove(
-              org.springframework.core.env.StandardEnvironment
-                  .SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME);
-      environment
-          .getPropertySources()
-          .addFirst(
-              new org.springframework.core.env.MapPropertySource("approved-cli-workspace", values));
-      var application =
-          new SpringApplication(com.aegisos.boot.config.CliApplicationConfiguration.class);
-      application.setEnvironment(environment);
-      application.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE);
-      application.setBannerMode(org.springframework.boot.Banner.Mode.OFF);
-      application.setLogStartupInfo(false);
-      application.setAddCommandLineProperties(false);
-      application.setRegisterShutdownHook(false);
-      try (var context = application.run()) {
-        return context
-            .getBean(com.aegisos.cli.ChatCommand.class)
-            .run(parsed.agent(), parsed.session(), in, out);
-      }
+      return new com.aegisos.boot.cli.CliRuntimeLauncher().chat(parsed, in, out, err);
     } catch (RuntimeException e) {
       int exit = 2;
       for (Throwable cause = e; cause != null; cause = cause.getCause()) {

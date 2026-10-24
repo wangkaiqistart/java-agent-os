@@ -149,6 +149,18 @@ class AuditStorageFailureTest {
       if (Files.getFileStore(parent).supportsFileAttributeView("posix"))
         assertThat(Files.getPosixFilePermissions(parent))
             .isEqualTo(java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));
+      else {
+        var acl =
+            Files.getFileAttributeView(parent, java.nio.file.attribute.AclFileAttributeView.class)
+                .getAcl();
+        assertThat(acl)
+            .isNotEmpty()
+            .allSatisfy(
+                entry -> {
+                  assertThat(entry.type()).isEqualTo(java.nio.file.attribute.AclEntryType.ALLOW);
+                  assertThat(entry.principal()).isEqualTo(Files.getOwner(parent));
+                });
+      }
     }
   }
 }

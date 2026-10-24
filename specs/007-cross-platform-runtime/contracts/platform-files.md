@@ -1,0 +1,7 @@
+# 平台文件访问契约
+
+平台门面提供有界受控读取、单链接普通文件校验与私有对象创建。调用方只接收字节/固定异常，不接收原生句柄。句柄所有权限定在一次方法调用，任何拒绝或异常按逆序关闭。读取不创建文件、不修正权限、不跟随未知链接；Linux无SDS、Darwin未知ABI、Windows原生接口或身份信息不可用时拒绝。上层ContextLoader统一完成UTF8/敏感检查与错误映射。
+
+Windows持久存储只支持本地NTFS；持久文件与sidecar必须可验证单链接。Linux/macOS沿用unix:nlink。新建对象采用owner权限，已有文件不改ACL/mtime。生命周期锁仍使用独立FileChannel sidecar，不能改为锁SQLite本体。目录原子移动不提供逐文件删除回退。
+
+Windows本地路径还拒绝尾随点/空格及保留设备名，避免原生扩展路径创建与JDBC/Win32名称规范化指向不同文件；词法回归可在非Windows运行，不加载kernel32，不替代Windows实际验收。

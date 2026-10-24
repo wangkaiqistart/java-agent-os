@@ -41,6 +41,27 @@ class MemoryServiceTest {
   }
 
   @Test
+  void tupleCannotBypassKnownCredentialGuard() {
+    var calls = new AtomicInteger();
+    var store =
+        (SessionStore)
+            Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[] {SessionStore.class},
+                (p, m, a) -> {
+                  calls.incrementAndGet();
+                  throw new AssertionError("NO_STORAGE_EXPECTED");
+                });
+    var memory = new DefaultMemoryService(store, new EmptyLongTermMemoryStore(), guard, budget);
+    assertThatThrownBy(
+            () ->
+                memory.getOrCreateSession(
+                    new SessionIdentity("cli", "synthetic-memory-secret-123", "p")))
+        .hasMessage("SENSITIVE_CONTENT");
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
   void defaultLongTermIsEmptyAndSensitiveRecallCannotBeDroppedAndContinued() {
     var store =
         (SessionStore)

@@ -14,13 +14,13 @@ class ReactSchemaTest {
   @TempDir Path dir;
 
   @Test
-  void emptyDatabaseHasCompleteV3AndFkChecks() throws Exception {
+  void emptyDatabaseHasCompleteV4AndFkChecks() throws Exception {
     var ds = new DriverManagerDataSource("jdbc:sqlite:" + dir.resolve("empty.db"));
     AuditSchemaInitializer.initialize(ds);
     try (var c = ds.getConnection();
         var s = c.createStatement()) {
       try (var r = s.executeQuery("select version from aegisos_schema")) {
-        assertThat(r.getInt(1)).isEqualTo(3);
+        assertThat(r.getInt(1)).isEqualTo(4);
       }
       var tables = new HashSet<String>();
       try (var r = s.executeQuery("select name from sqlite_master where type='table'")) {
